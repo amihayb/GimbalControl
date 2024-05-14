@@ -31,11 +31,12 @@ body {
 .go-button {
   font-size: 20px;
   width: 50%;
-
 }
 
 .demo-button {
   font-size: 16px;
+  width: 90px;
+  transform: none;
 }
 
 .input-group {

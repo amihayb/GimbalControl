@@ -12,13 +12,16 @@
 <body>
   <li><img width="100%" src="./assets/RafLogo.svg" alt="Rafael"></li><br><br>
   <li><img width="100%" src="./assets/logo-title.svg" alt="Blau Robotics"></li>
-  <div class="break"></div> <div class="break"></div>
+  <div class="break"></div>
+  <div class="break"></div>
 
   <li><button class="button head-button" id="connectButton" onclick="openClosePort(event)">Connect</button></li>
-  <div class="break"></div> <div class="break"></div>
+  <div class="break"></div>
+  <div class="break"></div>
   <li><button class="button head-button" id="motorOnButton" onclick="motorState()">Motors On</button></li>
-  <div class="break"></div> <div class="break"></div>
-  
+  <div class="break"></div>
+  <div class="break"></div>
+
   <div class="row">
     <div class="column">
       <div id="joystick" style="width:100%">
@@ -40,11 +43,12 @@
           <circle cx="50" cy="50" r="50" fill="url(#grad1)" />
           <circle cx="50" cy="50" r="47" fill="url(#grad2)" stroke="black" stroke-width="1.5px" />
           <circle cx="50" cy="50" r="44" fill="url(#grad3)" />
-          <circle cx="50" cy="50" r="20" fill="#cccccc" stroke="black" stroke-width="1px" onclick="alert('CENTER');" />
-          <path d="M50,14 54,22 46,22Z" fill="rgba(0,0,0,0.8)" onclick="goTo('UP')" />
-          <path d="M50,86 54,78 46,78Z" fill="rgba(0,0,0,0.8)" onclick="goTo('DOWN')" />
-          <path d="M14,50 22,54 22,46Z" fill="rgba(0,0,0,0.8)" onclick="goTo('LEFT')" />
-          <path d="M86,50 78,54 78,46Z" fill="rgba(0,0,0,0.8)" onclick="goTo('RIGHT')" />
+          <circle cx="50" cy="50" r="20" fill="#cccccc" stroke="black" stroke-width="1px"
+            onclick="joystickCmd('CENTER');" />
+          <path d="M50,14 54,22 46,22Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('UP')" />
+          <path d="M50,86 54,78 46,78Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('DOWN')" />
+          <path d="M14,50 22,54 22,46Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('LEFT')" />
+          <path d="M86,50 78,54 78,46Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('RIGHT')" />
         </svg>
       </div>
     </div>
@@ -63,11 +67,12 @@
   </div>
 
   <div class="break"></div>
-  <button class="button demo-button" onclick="startScenario(1)">Scan TR</button>
-  <button class="button demo-button" onclick="startScenario(2)">Scan EL</button>
-  <button class="button demo-button" onclick="startScenario(3)">Demo 1</button>
-  <button class="button demo-button" onclick="startScenario(4)">Demo 2</button>
-
+  <div id="demo-select-group" class="input-group">
+    <button class="button demo-button" onclick="startScenario(1)">Home</button>
+    <button class="button demo-button" onclick="startScenario(2)">Scan</button>
+    <button class="button demo-button" onclick="startScenario(3)">Demo 1</button>
+    <button class="button demo-button" onclick="startScenario(4)">Demo 2</button>
+  </div>
   <audio id="localAudio">
     <source src="assets/minimal-ping.mp3" type="audio/mpeg">
   </audio>

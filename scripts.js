@@ -1,5 +1,8 @@
 let serialPort;
 let motorOn = false;
+let joystickTr = 0;
+let joystickEl = 0;
+
 
 function openClosePort(event) {
     const button = document.getElementById('connectButton');
@@ -74,9 +77,11 @@ function goToAngle() {
         const elAngInput = document.getElementById('angEl-input');
         const trAngValue = trAngInput.value;
         const elAngValue = elAngInput.value;
-
-        const message = `R1[11]=${trAngValue}, R1[21]=${elAngValue}`;
+        
+        constmessage = `R1[11]=${trAngValue}; R1[21]=${elAngValue}`;
         console.log(message);
+        sendMsg(message);
+        message = 'R1[1]=1';
         sendMsg(message);
     } else {
         alert('Motors are off, \nPlease turn on motors first');
@@ -85,8 +90,24 @@ function goToAngle() {
 
 function startScenario(scenarioNumber) {
 
+    const message = '';
+
     if (motorOn) {
-        const message = `R1[1]=2, R1[2]=${scenarioNumber}`;
+        joystickTr = 0;
+        joystickEl = 0;
+
+        switch (scenarioNumber) {
+
+            case 1:  // Home
+                message = 'R1[12]=0; R1[22]=0; R1[11]=0; R1[21]=0; R1[1]=1;';
+                break;
+
+            case 2:   // Scan
+                message = 'R1[12]=0; R1[22]=0; R1[11]=0; R1[21]=0; R1[1]=2;';
+                break
+
+        }
+
         console.log(message);
         sendMsg(message);
     } else {
@@ -94,9 +115,35 @@ function startScenario(scenarioNumber) {
     }
 }
 
-function goTo(direction) {
-    console.log(direction);
+function joystickCmd(direction) {
     playLocalTone();
+    console.log(direction);
+
+    switch (direction) {
+        case "UP":
+            joystickEl++;
+            break;
+
+        case "DOWN":
+            joystickEl--;
+            break;
+
+        case "RIGHT":
+            joystickTr++;
+            break;
+
+        case "LEFT":
+            joystickTr--;
+            break;
+
+        case "CENTER":
+            joystickTr = 0;
+            joystickEl = 0;
+    }
+    //console.log(`Joystick TR = ${joystickTr}, EL = ${joystickEl}`);
+    const message = `R1[12]=${joystickTr}; R1[22]=${joystickEl}`;
+    console.log(message);
+    sendMsg(message);
 }
 
 
