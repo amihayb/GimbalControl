@@ -25,7 +25,7 @@ function openClosePort(event) {
 async function requestSerialPort() {
     try {
         serialPort = await navigator.serial.requestPort();
-        await serialPort.open({ baudRate: 9600 });
+        await serialPort.open({ baudRate: 115200 });
         console.log('Serial port opened successfully!');
         return true;
     } catch (error) {
@@ -39,7 +39,8 @@ async function sendMsg(message) {
         console.error('Serial port not opened. Click "Open Serial Port" first.');
         return;
     }
-    //const message = 'Yes!';
+    //let message = 'Yes!';
+    message = message + '\r';
     const writer = serialPort.writable.getWriter();
     await writer.write(new TextEncoder().encode(message));
     writer.releaseLock();
@@ -57,13 +58,13 @@ function motorState() {
     const button = document.getElementById('motorOnButton');
     if (motorOn) {
         // Turn Motors Off
-        sendMsg("R1[1]=0");
+        sendMsg("R1[1]=0\r");
         button.style.background = "#5898d4";
     } else { // Turn Motors On
         if (!serialPort) {
             alert('Please connect to driver first');
         } else {
-            sendMsg("R1[1]=1");
+            sendMsg("R1[1]=1\r");
             button.style.background = "#008080";
         }
     }
@@ -78,11 +79,11 @@ function goToAngle() {
         const trAngValue = trAngInput.value;
         const elAngValue = elAngInput.value;
         
-        constmessage = `R1[11]=${trAngValue}; R1[21]=${elAngValue}`;
+        let message = `R1[11]=${trAngValue}; R1[21]=${elAngValue}`;
         console.log(message);
         sendMsg(message);
-        message = 'R1[1]=1';
-        sendMsg(message);
+        //message = 'R1[1]=1';
+        //sendMsg(message);
     } else {
         alert('Motors are off, \nPlease turn on motors first');
     }
@@ -90,7 +91,7 @@ function goToAngle() {
 
 function startScenario(scenarioNumber) {
 
-    const message = '';
+    let message = '';
 
     if (motorOn) {
         joystickTr = 0;
@@ -141,7 +142,7 @@ function joystickCmd(direction) {
             joystickEl = 0;
     }
     //console.log(`Joystick TR = ${joystickTr}, EL = ${joystickEl}`);
-    const message = `R1[12]=${joystickTr}; R1[22]=${joystickEl}`;
+    let message = `R1[12]=${joystickTr}; R1[22]=${joystickEl}`;
     console.log(message);
     sendMsg(message);
 }
