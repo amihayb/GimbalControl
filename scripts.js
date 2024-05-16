@@ -60,12 +60,14 @@ function motorState() {
         // Turn Motors Off
         sendMsg("R1[1]=0\r");
         button.style.background = "#5898d4";
+        button.textContent = 'Motor On';
     } else { // Turn Motors On
         if (!serialPort) {
             alert('Please connect to driver first');
         } else {
             sendMsg("R1[1]=1\r");
             button.style.background = "#008080";
+            button.textContent = 'Motor Off';
         }
     }
     motorOn = !motorOn;
