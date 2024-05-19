@@ -109,12 +109,28 @@ function startScenario(scenarioNumber) {
                 message = 'R1[12]=0; R1[22]=0; R1[11]=0; R1[21]=0; R1[1]=2;';
                 break
 
+            case 3:   // Demo
+                message = 'R1[13]=1; R1[14]=100; R1[15]=900; R1[23]=5; R1[24]=50; R1[25]=50; R1[1]=3;';
+                break
+            case 4:   // Demo 2
+                message = 'R1[13]=2; R1[14]=27; R1[15]=-600; R1[23]=3; R1[24]=30; R1[25]=150; R1[1]=3;';
+                break                
         }
 
         console.log(message);
         sendMsg(message);
     } else {
         alert('Please turn on motors first');
+    }
+}
+
+function playTune() {
+
+    if (motorOn) {
+        let message = 'R1[1]=8';
+        sendMsg(message);
+    } else {
+        alert('Motors are off, \nPlease turn on motors first');
     }
 }
 
