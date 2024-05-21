@@ -124,6 +124,27 @@ function startScenario(scenarioNumber) {
     }
 }
 
+
+function sineMove(ax){
+
+    if (motorOn) {
+        let message = '';
+        // console.log('sineFrq' + ax + '-input');
+        const sineFrq = document.getElementById('sineFrq' + ax + '-input').value;
+        const sineAmp = document.getElementById('sineAmp' + ax + '-input').value;
+        const trAng = document.getElementById('ang' + ax + '-input').value;
+        if (ax == 'Tr'){
+            message = `R1[13]=${sineFrq}; R1[14]=${sineAmp}; R1[15]=${trAng}; R1[1]=3`;
+        } else {
+            message = `R1[23]=${sineFrq}; R1[24]=${sineAmp}; R1[25]=${trAng}; R1[1]=3`;
+        }
+        console.log(message);
+        sendMsg(message);
+    } else {
+        alert('Motors are off, \nPlease turn on motors first');
+    }
+}
+
 function playTune() {
 
     if (motorOn) {

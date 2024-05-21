@@ -54,11 +54,12 @@
     </div>
     <div class="column">
       <div id="goToAnglesGroup" class="input-group">
-        TR [deg]:
+        <div class="input-header">Go To:</div>
+        <div class="break"></div>
+        <div class="input-label">TR [deg]:</div>
         <input id="angTr-input" class="txt_input" contenteditable="true" value="0"
           style="border: 1px solid black; padding: 2px;"></input><br>
-        <div class="break"></div>
-        EL [deg]:
+        <div class="input-label">EL [deg]:</div>
         <input id="angEl-input" class="txt_input" contenteditable="true" value="0"
           style="border: 1px solid black; padding: 2px;"></input><br>
         <button class="button go-button" onclick="goToAngle()">GO</button>
@@ -73,6 +74,38 @@
     <button class="button demo-button" onclick="startScenario(3)">Demo 1</button>
     <button class="button demo-button" onclick="startScenario(4)">Demo 2</button>
   </div>
+
+  <div class="row">
+    <div class="column" style="width:50%">
+      <div id="SineTrsGroup" class="input-group">
+        <div class="input-header">Traverse Sine:</div>
+        <div class="break"></div>
+        <div class="input-label">Frq [Hz]:</div>
+        <input id="sineFrqTr-input" class="txt_input" contenteditable="true" value="0"
+          style="border: 1px solid black; padding: 2px;"></input><br>
+        <div class="break"></div>
+        <div class="input-label">Amp [deg]:</div>
+        <input id="sineAmpTr-input" class="txt_input" contenteditable="true" value="0"
+          style="border: 1px solid black; padding: 2px;"></input><br><br>
+        <button class="button go-button" onclick="sineMove('Tr')">GO</button>
+      </div>
+    </div>
+    <div class="column" style="width:50%">
+      <div id="SineElGroup" class="input-group">
+        <div class="input-header">Elevation Sine:</div>
+        <div class="break"></div>
+        <div class="input-label">Frq [Hz]:</div>
+        <input id="sineFrqEl-input" class="txt_input" contenteditable="true" value="0"
+          style="border: 1px solid black; padding: 2px;"></input><br>
+        <div class="break"></div>
+        <div class="input-label">Amp [deg]:</div>
+        <input id="sineAmpEl-input" class="txt_input" contenteditable="true" value="0"
+          style="border: 1px solid black; padding: 2px;"></input><br><br>
+        <button class="button go-button" onclick="sineMove('El')">GO</button>
+      </div>
+    </div>
+  </div>
+
   <audio id="localAudio">
     <source src="assets/minimal-ping.mp3" type="audio/mpeg">
   </audio>
