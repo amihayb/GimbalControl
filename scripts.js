@@ -134,9 +134,9 @@ function sineMove(ax){
         const sineAmp = document.getElementById('sineAmp' + ax + '-input').value;
         const trAng = document.getElementById('ang' + ax + '-input').value;
         if (ax == 'Tr'){
-            message = `R1[13]=${sineFrq}; R1[14]=${sineAmp}; R1[15]=${trAng}; R1[1]=3`;
+            message = `R1[13]=${10*sineFrq}; R1[14]=${10*sineAmp}; R1[15]=${trAng}; R1[1]=3`;
         } else {
-            message = `R1[23]=${sineFrq}; R1[24]=${sineAmp}; R1[25]=${trAng}; R1[1]=3`;
+            message = `R1[23]=${10*sineFrq}; R1[24]=${10*sineAmp}; R1[25]=${trAng}; R1[1]=3`;
         }
         console.log(message);
         sendMsg(message);
