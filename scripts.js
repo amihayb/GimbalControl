@@ -25,7 +25,8 @@ function openClosePort(event) {
 async function requestSerialPort() {
     try {
         serialPort = await navigator.serial.requestPort();
-        await serialPort.open({ baudRate: 115200 });
+        //await serialPort.open({ baudRate: 115200 });   // Platinum Drive
+        await serialPort.open({ baudRate: 230400 });   // Titanium Drive
         console.log('Serial port opened successfully!');
         return true;
     } catch (error) {
