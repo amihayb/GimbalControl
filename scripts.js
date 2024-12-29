@@ -58,6 +58,43 @@ async function sendMsg(message) {
     //console.log(`Sent: ${message}`);
 }
 
+
+function openModal(modalType) {
+    const sineModal = document.getElementById("Sine-group-modal");
+    const repeatModal = document.getElementById("Repeat-group-modal");
+    const button = document.querySelector(`[onclick="openModal('${modalType}')"]`);
+    const rect = button.getBoundingClientRect();
+    let modal;
+    
+    // Open the requested modal
+    if (modalType === 'sine') {
+      modal = sineModal;
+      repeatModal.style.display = "none";
+      
+    } else if (modalType === 'repeat') {
+      modal = repeatModal;
+      sineModal.style.display = "none";
+    }
+    
+    if (modal.style.display === "none" || modal.style.display === "") {
+        modal.style.display = "block";
+        // modal.style.position = "absolute";
+        // modal.style.left = rect.left + "px";
+        // modal.style.top = (rect.bottom + 5) + "px";
+      } else {
+        modal.style.display = "none";
+      }
+}
+
+// function openSineModal() {
+//     document.getElementById("Sine-group-modal").style.display = "block";
+//   }
+  
+//   function closeSineModal() {
+//     document.getElementById("Sine-group-modal").style.display = "none";
+//   }
+  
+
 async function closeSerialPort() {
     if (serialPort) {
         await writer.releaseLock();
@@ -158,6 +195,65 @@ function sineMove(ax){
         alert('Motors are off, \nPlease turn on motors first');
     }
 }
+
+function repeatMove() {
+    if (motorOn) {
+        const trMin = document.getElementById('repeatTrMin-input').value;
+        const trMax = document.getElementById('repeatTrMax-input').value;
+        const trVel = document.getElementById('repeatTrVel-input').value;
+        const elMin = document.getElementById('repeatElMin-input').value;
+        const elMax = document.getElementById('repeatElMax-input').value;
+        const elVel = document.getElementById('repeatElVel-input').value;
+        const iterations = document.getElementById('repeatIter-input').value;
+
+        // Validate input ranges
+        if (trMin > trMax || elMin > elMax) {
+            alert('Min values must be less than Max values');
+            return;
+        }
+
+        let iterCount = 0;
+        let goingToMax = true;
+
+        if (intervalMove) {
+            clearInterval(intervalMove);
+            intervalMove = null;
+        }
+
+        intervalMove = setInterval(async () => {
+            if (iterCount >= iterations) {
+                clearInterval(intervalMove);
+                intervalMove = null;
+                return;
+            }
+
+            let currTr = await readMsg('R1[31]');
+            let currEl = await readMsg('R1[41]');
+
+            if (goingToMax) {
+                if (Math.abs(currTr - trMin) < 0.1 && Math.abs(currEl - elMin) < 0.1) {
+                    sendMsg(`R1[11]=${trMax}; R1[21]=${elMax};`);
+                    goingToMax = false;
+                } else {
+                    sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
+                }
+            } else {
+                if (Math.abs(currTr - trMax) < 0.1 && Math.abs(currEl - elMax) < 0.1) {
+                    sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
+                    goingToMax = true;
+                    iterCount++;
+                }
+            }
+        }, 100);
+
+        const message = `R1[16]=${trMin}; R1[17]=${trMax}; R1[18]=${trVel}; R1[26]=${elMin}; R1[27]=${elMax}; R1[28]=${elVel}; R1[29]=${iterations}; R1[1]=4;`;
+        console.log(message);
+        sendMsg(message);
+    } else {
+        alert('Motors are off, \nPlease turn on motors first');
+    }
+}
+
 
 function jumpBackForth() {
 

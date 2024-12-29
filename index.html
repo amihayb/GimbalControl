@@ -86,33 +86,85 @@
     <button class="button demo-button" onclick="startScenario(4)">Demo 2</button>
   </div>
 
-  <div class="row">
-    <div class="column" style="width:50%">
-      <div id="SineTrsGroup" class="input-group">
-        <div class="input-header">Traverse Sine:</div>
-        <div class="break"></div>
-        <div class="input-label">Frq [Hz]:</div>
-        <input id="sineFrqTr-input" class="txt_input" contenteditable="true" value="0.1"
-          style="border: 1px solid black; padding: 2px;"></input><br>
-        <div class="break"></div>
-        <div class="input-label">Amp [deg]:</div>
-        <input id="sineAmpTr-input" class="txt_input" contenteditable="true" value="10"
-          style="border: 1px solid black; padding: 2px;"></input><br><br>
-        <button class="button go-button" onclick="sineMove('Tr')">GO</button>
+  <button class="button demo-button" onclick="openModal('sine')">Sine Move</button>
+  <button class="button demo-button" onclick="openModal('repeat')">Repeat Move</button>
+  
+  <div id="Sine-group-modal" class="modal" style="display: none; position: relative; border: 1px solid #ddd; background-color: white; padding: 10px; margin-top: 5px;">
+    <div class="row" style="max-width:400px">
+      <div class="column" style="width:50%">
+        <div id="SineTrsGroup" class="input-group">
+          <div class="input-header">Traverse Sine:</div>
+          <div class="break"></div>
+          <div class="input-label">Frq [Hz]:</div>
+          <input id="sineFrqTr-input" class="txt_input" contenteditable="true" value="0.1"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+          <div class="break"></div>
+          <div class="input-label">Amp [deg]:</div>
+          <input id="sineAmpTr-input" class="txt_input" contenteditable="true" value="10"
+            style="border: 1px solid black; padding: 2px;"></input><br><br>
+          <button class="button go-button" onclick="sineMove('Tr')">GO</button>
+        </div>
+      </div>
+      <div class="column" style="width:50%">
+        <div id="SineElGroup" class="input-group">
+          <div class="input-header">Elevation Sine:</div>
+          <div class="break"></div>
+          <div class="input-label">Frq [Hz]:</div>
+          <input id="sineFrqEl-input" class="txt_input" contenteditable="true" value="0.3"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+          <div class="break"></div>
+          <div class="input-label">Amp [deg]:</div>
+          <input id="sineAmpEl-input" class="txt_input" contenteditable="true" value="3"
+            style="border: 1px solid black; padding: 2px;"></input><br><br>
+          <button class="button go-button" onclick="sineMove('El')">GO</button>
+        </div>
       </div>
     </div>
-    <div class="column" style="width:50%">
-      <div id="SineElGroup" class="input-group">
-        <div class="input-header">Elevation Sine:</div>
-        <div class="break"></div>
-        <div class="input-label">Frq [Hz]:</div>
-        <input id="sineFrqEl-input" class="txt_input" contenteditable="true" value="0.3"
-          style="border: 1px solid black; padding: 2px;"></input><br>
-        <div class="break"></div>
-        <div class="input-label">Amp [deg]:</div>
-        <input id="sineAmpEl-input" class="txt_input" contenteditable="true" value="3"
-          style="border: 1px solid black; padding: 2px;"></input><br><br>
-        <button class="button go-button" onclick="sineMove('El')">GO</button>
+  </div>
+
+  <div id="Repeat-group-modal" class="modal" style="display: none; position: relative; border: 1px solid #ddd; background-color: white; padding: 10px; margin-top: 5px;">
+    <div class="row" style="max-width:400px">
+      <div class="column" style="width:50%">
+        <div id="RepeatTrsGroup" class="input-group">
+          <div class="input-header">Traverse Range:</div>
+          <div class="break"></div>
+          <div class="input-label">Min [deg]:</div>
+          <input id="repeatTrMin-input" class="txt_input" contenteditable="true" value="-45"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+          <div class="break"></div>
+          <div class="input-label">Max [deg]:</div>
+          <input id="repeatTrMax-input" class="txt_input" contenteditable="true" value="45"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+          <div class="break"></div>
+          <div class="input-label">Velocity [deg/s]:</div>
+          <input id="repeatTrVel-input" class="txt_input" contenteditable="true" value="10"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+        </div>
+      </div>
+      <div class="column" style="width:50%">
+        <div id="RepeatElGroup" class="input-group">
+          <div class="input-header">Elevation Range:</div>
+          <div class="break"></div>
+          <div class="input-label">Min [deg]:</div>
+          <input id="repeatElMin-input" class="txt_input" contenteditable="true" value="-20"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+          <div class="break"></div>
+          <div class="input-label">Max [deg]:</div>
+          <input id="repeatElMax-input" class="txt_input" contenteditable="true" value="20"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+          <div class="break"></div>
+          <div class="input-label">Velocity [deg/s]:</div>
+          <input id="repeatElVel-input" class="txt_input" contenteditable="true" value="10"
+            style="border: 1px solid black; padding: 2px;"></input><br>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="max-width:300px">
+      <div class="column" style="width:100%">
+        <div class="input-label" style="width: 100%;">Number of Iterations:</div>
+        <input id="repeatIter-input" class="txt_input" contenteditable="true" value="5"
+          style="border: 1px solid black; padding: 2px; width: 100%;"></input><br><br>
+        <button class="button go-button" onclick=repeatMove()">GO</button>
       </div>
     </div>
   </div>
