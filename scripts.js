@@ -205,6 +205,8 @@ function repeatMove() {
         const elMax = document.getElementById('repeatElMax-input').value;
         const elVel = document.getElementById('repeatElVel-input').value;
         const iterations = document.getElementById('repeatIter-input').value;
+        document.getElementById('repeatButton').style.background = "#008080";
+        document.getElementById('repeatIter-input').value = '1 / ' + iterations;
 
         // Validate input ranges
         if (trMin > trMax || elMin > elMax) {
@@ -213,7 +215,7 @@ function repeatMove() {
         }
 
         let iterCount = 0;
-        let goingToMax = true;
+        let goingToMax = false;
 
         if (intervalMove) {
             clearInterval(intervalMove);
@@ -224,31 +226,41 @@ function repeatMove() {
             if (iterCount >= iterations) {
                 clearInterval(intervalMove);
                 intervalMove = null;
+
+                document.getElementById('repeatButton').style.background = "#5898d4";
+                document.getElementById('repeatIter-input').value = iterations;
                 return;
             }
 
-            let currTr = await readMsg('R1[31]');
-            let currEl = await readMsg('R1[41]');
+            //let currTr = await readMsg('R1[31]') / 10.0;
+            //let currEl = await readMsg('R1[41]') / 10.0;
+            let currTr = document.getElementById('angTr-pos').value;
+            let currEl = document.getElementById('angEl-pos').value;
+            console.log(`Current TR: ${currTr}, Current EL: ${currEl}`);
 
             if (goingToMax) {
-                if (Math.abs(currTr - trMin) < 0.1 && Math.abs(currEl - elMin) < 0.1) {
-                    sendMsg(`R1[11]=${trMax}; R1[21]=${elMax};`);
+                if (Math.abs(currTr - trMax) < 2 && Math.abs(currEl - elMax) < 2) {
+                    sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
                     goingToMax = false;
-                } else {
-                    sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
-                }
+                }// else {
+                //    sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
+                //}
             } else {
-                if (Math.abs(currTr - trMax) < 0.1 && Math.abs(currEl - elMax) < 0.1) {
-                    sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
+                if (Math.abs(currTr - trMin) < 2 && Math.abs(currEl - elMin) < 2) {
+                    sendMsg(`R1[11]=${trMax}; R1[21]=${elMax};`);
                     goingToMax = true;
                     iterCount++;
+                    document.getElementById('repeatIter-input').value = iterCount + ' / ' + iterations;
                 }
             }
-        }, 100);
+        }, 200);
 
         const message = `R1[16]=${trMin}; R1[17]=${trMax}; R1[18]=${trVel}; R1[26]=${elMin}; R1[27]=${elMax}; R1[28]=${elVel}; R1[29]=${iterations}; R1[1]=4;`;
         console.log(message);
         sendMsg(message);
+        sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
+        sendMsg(message);
+
     } else {
         alert('Motors are off, \nPlease turn on motors first');
     }

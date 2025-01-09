@@ -146,11 +146,11 @@
           <div class="input-header">Elevation Range:</div>
           <div class="break"></div>
           <div class="input-label">Min [deg]:</div>
-          <input id="repeatElMin-input" class="txt_input" contenteditable="true" value="-20"
+          <input id="repeatElMin-input" class="txt_input" contenteditable="true" value="-5"
             style="border: 1px solid black; padding: 2px;"></input><br>
           <div class="break"></div>
           <div class="input-label">Max [deg]:</div>
-          <input id="repeatElMax-input" class="txt_input" contenteditable="true" value="20"
+          <input id="repeatElMax-input" class="txt_input" contenteditable="true" value="30"
             style="border: 1px solid black; padding: 2px;"></input><br>
           <div class="break"></div>
           <div class="input-label">Velocity [deg/s]:</div>
@@ -164,7 +164,7 @@
         <div class="input-label" style="width: 100%;">Number of Iterations:</div>
         <input id="repeatIter-input" class="txt_input" contenteditable="true" value="5"
           style="border: 1px solid black; padding: 2px; width: 100%;"></input><br><br>
-        <button class="button go-button" onclick=repeatMove()">GO</button>
+        <button class="button go-button" id="repeatButton" onclick="repeatMove()">GO</button>
       </div>
     </div>
   </div>
