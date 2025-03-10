@@ -23,6 +23,7 @@ async function openClosePort(event) {
             button.style.background="#108080";
         }*/
     } else {
+        sendMsg("R1[3]=0\r");
         await posAngleShow('close');
         await closeSerialPort();
         button.textContent = 'Connect';
@@ -33,8 +34,8 @@ async function openClosePort(event) {
 async function requestSerialPort() {
     try {
         serialPort = await navigator.serial.requestPort();
-        //await serialPort.open({ baudRate: 115200 });   // Platinum Drive
-        await serialPort.open({ baudRate: 230400 });   // Titanium Drive
+        await serialPort.open({ baudRate: 115200 });   // Platinum Drive
+        // await serialPort.open({ baudRate: 230400 });   // Titanium Drive
         writer = await serialPort.writable.getWriter();
         reader = await serialPort.readable.getReader();
         console.log('Serial port opened successfully!');
@@ -56,6 +57,15 @@ async function sendMsg(message) {
     await writer.write(new TextEncoder().encode(message));
     // writer.releaseLock();
     //console.log(`Sent: ${message}`);
+}
+
+
+async function sendNumMsg(){
+
+    // const a = new Uint8Array([66,82,100,1,128,123,225,225,64,66,15,0,120,249,254,255,205,202,1,0,107]);
+    const a = new Uint8Array([0x42,  0x52,  0x02,  0x01,  0x9A,  0x99,  0x99,  0x99,  0x99,  0x99,  0xB9,  0x3F,  0x9A,  0x99,  0x99,  0x99,  0x99,  0x99,  0xA9,  0x3F,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0xA5]);
+
+    await writer.write(a);
 }
 
 
@@ -106,6 +116,8 @@ async function closeSerialPort() {
 
 function motorState() {
     const button = document.getElementById('motorOnButton');
+
+    sendMsg("R1[3]=1\r");
     if (motorOn) {
         // Turn Motors Off
         sendMsg("R1[1]=0\r");
