@@ -309,15 +309,21 @@ async function posAngleShow(state) {
         console.log("Start show pos command interval");
         intervalShowPos = setInterval(() => {
             setPosBoxes();
-        }, 100);
+        }, 30);
     }
 }
 
 async function setPosBoxes() {
+    let sysMode = await readMsg('R1[1]');
+    updateInputValue('show-sysMode', sysMode,1);
     let posTr = await readMsg('R1[31]');
     updateInputValue('angTr-pos', posTr);
     let posEl = await readMsg('R1[41]');
     updateInputValue('angEl-pos', posEl);
+    // let velTr = await readMsg('ax1.vx');
+    // updateInputValue('show-angTr-vel', Math.floor( parseFloat(velTr / 728.2) ), 1);    // tics2deg
+    // let velEl = await readMsg('ax2.vx');
+    // updateInputValue('show-angEl-vel', Math.floor( parseFloat(velEl / 728.2) ), 1);    // tics2deg
 }
 
 async function readMsg(message) {
