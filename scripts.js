@@ -168,14 +168,14 @@ function startScenario(scenarioNumber) {
                 break;
 
             case 2:   // Scan
-                message = 'R1[12]=0; R1[22]=0; R1[11]=0; R1[21]=0; R1[1]=2;';
+                message = 'R1[12]=0; R1[22]=0; R1[11]=0; R1[21]=0; R1[1]=12;';
                 break
 
             case 3:   // Demo
-                message = 'R1[13]=1; R1[14]=100; R1[15]=90; R1[23]=5; R1[24]=30; R1[25]=10; R1[1]=3;';
+                message = 'R1[13]=1; R1[14]=100; R1[15]=90; R1[23]=5; R1[24]=30; R1[25]=10; R1[1]=13;';
                 break
             case 4:   // Demo 2
-                //message = 'R1[13]=1; R1[14]=50; R1[15]=-60; R1[23]=3; R1[24]=30; R1[25]=15; R1[1]=3;';
+                //message = 'R1[13]=1; R1[14]=50; R1[15]=-60; R1[23]=3; R1[24]=30; R1[25]=15; R1[1]=13;';
                 jumpBackForth();
                 break                
         }
@@ -197,9 +197,9 @@ function sineMove(ax){
         const sineAmp = document.getElementById('sineAmp' + ax + '-input').value;
         const trAng = document.getElementById('ang' + ax + '-input').value;
         if (ax == 'Tr'){
-            message = `R1[13]=${10*sineFrq}; R1[14]=${10*sineAmp}; R1[15]=${trAng}; R1[1]=3`;
+            message = `R1[13]=${10*sineFrq}; R1[14]=${10*sineAmp}; R1[15]=${trAng}; R1[1]=13`;
         } else {
-            message = `R1[23]=${10*sineFrq}; R1[24]=${10*sineAmp}; R1[25]=${trAng}; R1[1]=3`;
+            message = `R1[23]=${10*sineFrq}; R1[24]=${10*sineAmp}; R1[25]=${trAng}; R1[1]=13`;
         }
         console.log(message);
         sendMsg(message);
@@ -267,7 +267,7 @@ function repeatMove() {
             }
         }, 200);
 
-        const message = `R1[16]=${trMin}; R1[17]=${trMax}; R1[18]=${trVel}; R1[26]=${elMin}; R1[27]=${elMax}; R1[28]=${elVel}; R1[29]=${iterations}; R1[1]=4;`;
+        const message = `R1[16]=${trMin}; R1[17]=${trMax}; R1[18]=${trVel}; R1[26]=${elMin}; R1[27]=${elMax}; R1[28]=${elVel}; R1[29]=${iterations}; R1[1]=12;`;
         console.log(message);
         sendMsg(message);
         sendMsg(`R1[11]=${trMin}; R1[21]=${elMin};`);
@@ -320,6 +320,10 @@ async function setPosBoxes() {
     updateInputValue('angTr-pos', posTr);
     let posEl = await readMsg('R1[41]');
     updateInputValue('angEl-pos', posEl);
+    let posSetTr = await readMsg('R1[32]');
+    updateInputValue('angSetTr-pos', posSetTr);
+    let posSetEl = await readMsg('R1[42]');
+    updateInputValue('angSetEl-pos', posSetEl);
     // let velTr = await readMsg('ax1.vx');
     // updateInputValue('show-angTr-vel', Math.floor( parseFloat(velTr / 728.2) ), 1);    // tics2deg
     // let velEl = await readMsg('ax2.vx');
