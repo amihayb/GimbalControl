@@ -1,2 +1,3 @@
-# Gimbal Control
-A UI to control gimbal through driver commands.
+# twistOmeter
+ Analyzing tool for cable torsion measurement device
+

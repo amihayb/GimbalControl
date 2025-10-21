@@ -1,198 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Naval Antenna Control</title>
-  <link href="styles.css" rel="stylesheet">
-  <link rel="icon" href="assets/logo-blau-robotics.ico" />
+  <title>Gimbal Control</title>
+  
+  <!-- Stylesheets -->
+  <link href="StyleSheet.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  
+  <!-- Favicon -->
+  <link rel="shortcut icon" href="images/RafaelLogo.ico">
+  <link rel="icon" href="images/RafaelLogo.ico">
+  
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 
 <body>
-  <li><img width="100%" src="./assets/RafLogo.svg" alt="Rafael" onclick="playTune()"></li><br><br>
-  <li><img width="100%" src="./assets/logo-title.svg" alt="Blau Robotics"></li>
-  <div class="break"></div>
-  <div class="break"></div>
-
-  <li><button class="button head-button" id="connectButton" onclick="openClosePort(event)">Connect</button></li>
-  <div class="break"></div>
-  <div class="break"></div>
-  <li><button class="button head-button" id="motorOnButton" onclick="motorState()">Motors On</button></li>
-  <div class="break"></div>
-  <div class="break"></div>
-    <div id="showAnglesGroup" class="input-group">
-      <div class="input-header">Antenna:</div>
-      <div class="break"></div>
-      <div class="input-label">System Mode:</div>
-      <input id="show-sysMode" class="txt_input" contenteditable="true" value="0"
-        style="border: 1px solid black; padding: 2px;"></input><br>
-      <div class="break"></div>
-      <div class="input-label">Position TR [deg]:</div>
-      <input id="angTr-pos" class="txt_input" contenteditable="true" value="0"
-        style="border: 1px solid black; padding: 2px;"></input><br>
-      <div class="break"></div>
-      <div class="input-label">Position Set TR [deg]:</div>
-      <input id="angSetTr-pos" class="txt_input" contenteditable="true" value="0"
-        style="border: 1px solid black; padding: 2px;"></input><br>
-      <div class="break"></div>
-      <div class="input-label">Position EL [deg]:</div>
-      <input id="angEl-pos" class="txt_input" contenteditable="true" value="0"
-        style="border: 1px solid black; padding: 2px;"></input><br>
-        <div class="break"></div>
-      <div class="input-label">Position Set EL [deg]:</div>
-      <input id="angSetEl-pos" class="txt_input" contenteditable="true" value="0"
-        style="border: 1px solid black; padding: 2px;"></input><br><br>
-        <!-- <div class="input-label">Velocity TR [deg]:</div>
-      <input id="show-angTr-vel" class="txt_input" contenteditable="true" value="0"
-        style="border: 1px solid black; padding: 2px;"></input><br>
-      <div class="break"></div>
-      <div class="input-label">Velocity EL [deg]:</div>
-      <input id="show-angEl-vel" class="txt_input" contenteditable="true" value="0"
-        style="border: 1px solid black; padding: 2px;"></input><br><br> -->
+  <div class="topnav" id="topnav">
+    <img src="images/RafLogo.svg" alt="Rafael logo" onclick="playTune()" class="headImg">
+    <span><i class="fa fa-folder-open" title="Open File"></i>
+      <input id="file-selector" type="file" />
+    </span>
+    <a id="recordButton" onclick="recordData()" title="Record Data"><i class="fa fa-circle"></i></a>
+    <a onclick="about()" title="About"><i class="fa fa-info-circle"></i></a>
+    <img onclick="about()" height="36" src="images/logo-title.svg" alt="Blau Robotics" id="LogoBlau">
+  </div>
+  <div class="sidenav" id="sidenav">
+    <h1>Motor Control</h1>
+    <div class="toggle-container" title="Connect to the controller">
+      <label class="toggle-label" for="connection-toggle">Connection Status</label>
+      <label class="toggle-container">
+        <input type="checkbox" id="connection-toggle" class="toggle-input" onchange="connectToggle(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div><br>
+    <div class="toggle-container" title="Turn motor on and off">
+      <label class="toggle-label" for="motor-toggle">Motor On</label>
+      <label class="toggle-container">
+        <input type="checkbox" id="motor-toggle" class="toggle-input" onchange="motorToggle(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div><br>
+    <div class="target-control" title="System operating mode">
+      <label for="systemModeInput">System Mode</label>
+      <input type="text" id="systemModeInput" value="0" />
+    </div><br>
+    <div class="target-control" title="Motor status indicators">
+      <table class="parameter-table">
+        <thead>
+          <tr>
+            <th class="param-header">Parameter</th>
+            <th class="axis-header">TR</th>
+            <th class="axis-header">EL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="param-label">Position [deg]</td>
+            <td class="param-input-cell"><input type="text" id="PositionInputTR" value="0" class="param-input" /></td>
+            <td class="param-input-cell"><input type="text" id="PositionInputEL" value="0" class="param-input" /></td>
+          </tr>
+          <tr>
+            <td class="param-label">Velocity [deg/s]</td>
+            <td class="param-input-cell"><input type="text" id="VelocityInputTR" value="0" class="param-input" /></td>
+            <td class="param-input-cell"><input type="text" id="VelocityInputEL" value="0" class="param-input" /></td>
+          </tr>
+          <tr>
+            <td class="param-label">Current [Amp]</td>
+            <td class="param-input-cell"><input type="text" id="CurrentInputTR" value="0" class="param-input" /></td>
+            <td class="param-input-cell"><input type="text" id="CurrentInputEL" value="0" class="param-input" /></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-
-  <div class="row">
-    <div class="column">
-      <div id="joystick" style="width:100%">
-        <svg width="100%" height="100%" viewBox="0 0 100 100">
-          <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:rgb(16,16,16);stop-opacity:1" />
-              <stop offset="100%" style="stop-color:rgb(240,240,240);stop-opacity:1" />
-            </linearGradient>
-            <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:rgb(240,240,240);stop-opacity:1" />
-              <stop offset="100%" style="stop-color:rgb(16,16,16);stop-opacity:1" />
-            </linearGradient>
-            <linearGradient id="grad3" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:rgb(168,168,168);stop-opacity:1" />
-              <stop offset="100%" style="stop-color:rgb(239,239,239);stop-opacity:1" />
-            </linearGradient>
-          </defs>
-          <circle cx="50" cy="50" r="50" fill="url(#grad1)" />
-          <circle cx="50" cy="50" r="47" fill="url(#grad2)" stroke="black" stroke-width="1.5px" />
-          <circle cx="50" cy="50" r="44" fill="url(#grad3)" />
-          <circle cx="50" cy="50" r="20" fill="#cccccc" stroke="black" stroke-width="1px"
-            onclick="joystickCmd('CENTER');" />
-          <path d="M50,14 54,22 46,22Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('UP')" />
-          <path d="M50,86 54,78 46,78Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('DOWN')" />
-          <path d="M14,50 22,54 22,46Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('LEFT')" />
-          <path d="M86,50 78,54 78,46Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('RIGHT')" />
-        </svg>
-      </div>
+    <br><hr><br>
+    <div>
+      <a href="#" class="button active" id="movement-control-button" title="Movement control interface" onclick="MovementControl();">Movement Control</a>
+      <a href="#" class="button" title="Installation setup procedures" onclick="InstallationSetup();">Installation Setup</a>
+      <a href="#" class="button" title="Acceptance Test Procedure" onclick="ATP();">ATP</a>
+      <a href="#" class="button" title="View telemetry data" onclick="ViewTelemetry();">View Telemetry</a>
     </div>
-    <div class="column">
-      <div id="goToAnglesGroup" class="input-group">
-        <div class="input-header">Go To:</div>
-        <div class="break"></div>
-        <div class="input-label">TR [deg]:</div>
-        <input id="angTr-input" class="txt_input" contenteditable="true" value="0"
-          style="border: 1px solid black; padding: 2px;"></input><br>
-        <div class="input-label">EL [deg]:</div>
-        <input id="angEl-input" class="txt_input" contenteditable="true" value="0"
-          style="border: 1px solid black; padding: 2px;"></input><br>
-        <button class="button go-button" onclick="goToAngle()">GO</button>
-      </div>
+    <br><hr><br>
+    <div class="target-control" title="Movement status">
+      <label>Status</label>
+      <div id="movementStatus" style="font-size: 12px; color: #6c757d; text-align: center;">Ready for commands</div>
     </div>
   </div>
-
-  <div class="break"></div>
-  <div id="demo-select-group" class="input-group">
-    <button class="button demo-button" onclick="startScenario(1)">Home</button>
-    <button class="button demo-button" onclick="startScenario(2)">Scan</button>
-    <button class="button demo-button" onclick="startScenario(3)">Demo 1</button>
-    <button class="button demo-button" onclick="startScenario(4)">Demo 2</button>
-  </div>
-
-  <button class="button demo-button" onclick="openModal('sine')">Sine Move</button>
-  <button class="button demo-button" onclick="openModal('repeat')">Repeat Move</button>
-  
-  <div id="Sine-group-modal" class="modal" style="display: none; position: relative; border: 1px solid #ddd; background-color: white; padding: 10px; margin-top: 5px;">
-    <div class="row" style="max-width:400px">
-      <div class="column" style="width:50%">
-        <div id="SineTrsGroup" class="input-group">
-          <div class="input-header">Traverse Sine:</div>
-          <div class="break"></div>
-          <div class="input-label">Frq [Hz]:</div>
-          <input id="sineFrqTr-input" class="txt_input" contenteditable="true" value="0.1"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-          <div class="break"></div>
-          <div class="input-label">Amp [deg]:</div>
-          <input id="sineAmpTr-input" class="txt_input" contenteditable="true" value="10"
-            style="border: 1px solid black; padding: 2px;"></input><br><br>
-          <button class="button go-button" onclick="sineMove('Tr')">GO</button>
-        </div>
-      </div>
-      <div class="column" style="width:50%">
-        <div id="SineElGroup" class="input-group">
-          <div class="input-header">Elevation Sine:</div>
-          <div class="break"></div>
-          <div class="input-label">Frq [Hz]:</div>
-          <input id="sineFrqEl-input" class="txt_input" contenteditable="true" value="0.3"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-          <div class="break"></div>
-          <div class="input-label">Amp [deg]:</div>
-          <input id="sineAmpEl-input" class="txt_input" contenteditable="true" value="3"
-            style="border: 1px solid black; padding: 2px;"></input><br><br>
-          <button class="button go-button" onclick="sineMove('El')">GO</button>
-        </div>
+  <div id="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
+    ondragleave="handleDragLeave(event)">
+    <div id="explenation_text">
+      Drag & Drop CSV File Here
+      <br>
+      <picture id="picture_main">
+        <img src="images/Device.jpg" alt="Device Image" id="deviceImage" style="max-width: 100%; height: auto; width: 1000px;">
+      </picture>
+      <br>
+      <div id="explenation_label">
+        <h2>Gimbal Control</h2>
+        <ul>
+          <li>Move Antenna in various scenarios</li>
+          <li>Installation Setup procedures</li>
+          <li>Acceptance Test Procedure</li>
+          <li>View Telemetry</li>
+        </ul>
+        <p>Good luck and happy testing!</p>
       </div>
     </div>
-  </div>
-
-  <div id="Repeat-group-modal" class="modal" style="display: none; position: relative; border: 1px solid #ddd; background-color: white; padding: 10px; margin-top: 5px;">
-    <div class="row" style="max-width:400px">
-      <div class="column" style="width:50%">
-        <div id="RepeatTrsGroup" class="input-group">
-          <div class="input-header">Traverse Range:</div>
-          <div class="break"></div>
-          <div class="input-label">Min [deg]:</div>
-          <input id="repeatTrMin-input" class="txt_input" contenteditable="true" value="-45"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-          <div class="break"></div>
-          <div class="input-label">Max [deg]:</div>
-          <input id="repeatTrMax-input" class="txt_input" contenteditable="true" value="45"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-          <div class="break"></div>
-          <div class="input-label">Velocity [deg/s]:</div>
-          <input id="repeatTrVel-input" class="txt_input" contenteditable="true" value="10"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-        </div>
-      </div>
-      <div class="column" style="width:50%">
-        <div id="RepeatElGroup" class="input-group">
-          <div class="input-header">Elevation Range:</div>
-          <div class="break"></div>
-          <div class="input-label">Min [deg]:</div>
-          <input id="repeatElMin-input" class="txt_input" contenteditable="true" value="-5"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-          <div class="break"></div>
-          <div class="input-label">Max [deg]:</div>
-          <input id="repeatElMax-input" class="txt_input" contenteditable="true" value="30"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-          <div class="break"></div>
-          <div class="input-label">Velocity [deg/s]:</div>
-          <input id="repeatElVel-input" class="txt_input" contenteditable="true" value="10"
-            style="border: 1px solid black; padding: 2px;"></input><br>
-        </div>
-      </div>
-    </div>
-    <div class="row" style="max-width:300px">
-      <div class="column" style="width:100%">
-        <div class="input-label" style="width: 100%;">Number of Iterations:</div>
-        <input id="repeatIter-input" class="txt_input" contenteditable="true" value="5"
-          style="border: 1px solid black; padding: 2px; width: 100%;"></input><br><br>
-        <button class="button go-button" id="repeatButton" onclick="repeatMove()">GO</button>
-      </div>
+    <table id="resultsTable"></table>
+    <div class="plot-area" id="plot-area">
     </div>
   </div>
-
-  <audio id="localAudio">
+  <audio id="localAudio" preload="auto">
     <source src="assets/minimal-ping.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
   </audio>
-
-  <script src="scripts.js"></script>
+  <script src="js/constants.js"></script>
+  <script src="js/mathUtils.js"></script>
+  <script src="js/uiUtils.js"></script>
+  <script src="js/gimbalSerial.js"></script>
+  <script src="js/fileHandling.js"></script>
+  <script src="js/plotting.js"></script>
+  <script src="js/movementControl.js"></script>
+  <script src="js/app.js"></script>
 </body>
 
 </html>
