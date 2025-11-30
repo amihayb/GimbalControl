@@ -178,6 +178,50 @@ function closeSerialPort() {
 }
 
 /**
+ * Reconnect to the same serial port without prompting
+ * @returns {Promise<boolean>} True if reconnection successful, false otherwise
+ */
+async function reconnectSerialPort() {
+  if (!serialPort) {
+    console.error('No serial port to reconnect to');
+    return false;
+  }
+
+  try {
+    // Release locks
+    if (writer) {
+      writer.releaseLock();
+      writer = null;
+    }
+    if (reader) {
+      reader.releaseLock();
+      reader = null;
+    }
+
+    // Store port reference
+    const portToReconnect = serialPort;
+
+    // Close the port
+    await portToReconnect.close();
+
+    // Reopen the same port
+    await portToReconnect.open({ baudRate: 115200 });
+    serialPort = portToReconnect;
+
+    // Get new reader and writer
+    writer = await serialPort.writable.getWriter();
+    reader = await serialPort.readable.getReader();
+
+    console.log('Serial port reconnected successfully!');
+    return true;
+  } catch (error) {
+    console.error('Error reconnecting to serial port:', error);
+    serialPort = null;
+    return false;
+  }
+}
+
+/**
  * Flush the serial reader buffer
  */
 async function flushSerialReader() {
@@ -238,9 +282,14 @@ function parsePairs(input) {
     let value = parts[i + 1];
     if (value === undefined) continue;
 
-    // Try to extract number inside brackets (R1[xx], s1[xx], etc.)
-    const match = rawKey.match(/\[(\d+)\]/);
-    const key = match ? Number(match[1]) : rawKey; // if brackets found → number, else keep raw
+    // Extract number inside brackets only if key starts with "R1["
+    let key;
+    if (rawKey.startsWith('R1[')) {
+      const match = rawKey.match(/\[(\d+)\]/);
+      key = match ? Number(match[1]) : rawKey;
+    } else {
+      key = rawKey; // Keep full key for non-R1 keys
+    }
 
     // Convert value to number if possible
     const numVal = Number(value);
@@ -292,7 +341,15 @@ async function saveElmo() {
   
   showLiveData(false);
   sendMsg('sv;');
-  await new Promise(resolve => setTimeout(resolve, 50));
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Disconnect and reconnect to COM port
+  const reconnected = await reconnectSerialPort();
+  if (!reconnected) {
+    updateMovementStatus('Error: Failed to reconnect to device', 'error');
+    return false;
+  }
+
   updateMovementStatus('Elmo settings saved', 'ready');
   showLiveData(true);
 }
@@ -414,6 +471,7 @@ window.requestSerialPort = requestSerialPort;
 window.sendMsg = sendMsg;
 window.readMsg = readMsg;
 window.closeSerialPort = closeSerialPort;
+window.reconnectSerialPort = reconnectSerialPort;
 window.flushSerialReader = flushSerialReader;
 window.parsePairs = parsePairs;
 window.showLiveData = showLiveData;

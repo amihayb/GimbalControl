@@ -219,7 +219,11 @@ async function setZeroAngles() {
   updateMovementStatus('Setting zero angles...', 'running');
   showLiveData(false);
   await new Promise(resolve => setTimeout(resolve, 50));
-  await flushSerialReader();
+  await readMsg('EO=1;;\r', { skipLock: true });
+  // await readMsg(';;\r', { skipLock: true });
+  // await readMsg(';;\r', { skipLock: true });
+  /*
+  // await flushSerialReader();
 
   // var tRead = await readMsg('S1[17]');
   // const curOffset = parseFloat(tRead.replace(';', ''));
@@ -233,7 +237,7 @@ async function setZeroAngles() {
   
   while (attempts < maxAttempts) {
     try {
-      var tRead = await readMsg('S1[17];AX1.px;S2[17];AX2.px;');
+      var tRead = await readMsg('S1[17];AX1.px;S2[17];AX2.px;;\r', { skipLock: true });
       console.log(`Attempt ${attempts + 1}: ${tRead}`);
       let pairs = parsePairs(tRead);
       curOffsetTr = getValue(pairs, "S1[17]");
@@ -281,32 +285,44 @@ async function setZeroAngles() {
     motorToggle(motorToggleElement);
   }
 
-  sendMsg('S1[17]=' + newOffsetTr);
-  sendMsg('S2[17]=' + newOffsetEl);
+  sendMsg('S1[17]=' + newOffsetTr + ';\r');
+  sendMsg('S2[17]=' + newOffsetEl + ';\r');
   console.log('S1[17]=' + newOffsetTr);
   console.log('S2[17]=' + newOffsetEl);
+  */
+
+  sendMsg(';\r');
+  sendMsg('s2[17]=s2[17]-ax2.px;\r');
+  sendMsg('s1[17]=s1[17]-ax1.px;\r');
+
+  var newOffsetTr = await readMsg('S1[17];\r');
+  console.log(newOffsetTr);
+  var newOffsetEl = await readMsg('S2[17];\r');
+  console.log(newOffsetEl);
+
 
   if (newOffsetTr > 0.0) {
-    sendMsg('S1[18]=0;');
+    sendMsg('S1[18]=0;\r');
     console.log('S1[18]=0;');
   } else {
-    sendMsg('S1[18]=-1;');
+    sendMsg('S1[18]=-1;\r');
     console.log('S1[18]=-1;');
   }
   if (newOffsetEl > 0.0) {
-    sendMsg('S2[18]=0;');
+    sendMsg('S2[18]=0;\r');
     console.log('S2[18]=0;');
   } else {
-    sendMsg('S2[18]=-1;');
+    sendMsg('S2[18]=-1;\r');
     console.log('S2[18]=-1;');
   }
-  sendMsg('s1[1]=0');    // Restart encoder
-  sendMsg('s1[1]=5;');    // Set back encoder type
-  sendMsg('s2[1]=0');    // Restart encoder
-  sendMsg('s2[1]=5;');    // Set back encoder type
+  
+  sendMsg('s1[1]=0;\r');    // Restart encoder
+  sendMsg('s1[1]=5;\r');    // Set back encoder type
+  sendMsg('s2[1]=0;\r');    // Restart encoder
+  sendMsg('s2[1]=5;\r');    // Set back encoder type
 
   await new Promise(resolve => setTimeout(resolve, 200));
-  await flushSerialReader();
+  // await flushSerialReader();
   updateMovementStatus('Zero angles set', 'ready');
   showLiveData(true);
 }
@@ -339,7 +355,7 @@ async function commutation(axis = 2) {
   turnOffMotor()
   sendMsg('rz[1]=167');
   await new Promise(resolve => setTimeout(resolve, 50));
-  await flushSerialReader();
+  // await flushSerialReader();
 
   sendMsg(`ax${axis}.ca[15]=5;ax${axis}.ca[10]=1;`);
   await new Promise(resolve => setTimeout(resolve, 50));
@@ -358,7 +374,7 @@ async function commutation(axis = 2) {
     }
     
     await new Promise(resolve => setTimeout(resolve, 100));
-    let soValue = await readMsg(`ax${axis}.SO`);
+    let soValue = await readMsg(`ax${axis}.SO;;`);
     // Try to extract the value (could be "ax${axis}.SO=1" or just "1")
     let match = soValue && soValue.match ? soValue.match(/(\d+)/) : null;
     let value = match ? parseInt(match[1], 10) : parseInt(soValue, 10);
