@@ -339,7 +339,7 @@ async function saveElmo() {
     return;
   }
   
-  showLiveData(false);
+  await showLiveData(false);
   sendMsg('sv;');
   await new Promise(resolve => setTimeout(resolve, 1000));
 

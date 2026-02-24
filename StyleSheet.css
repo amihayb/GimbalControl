@@ -197,20 +197,22 @@ body {
   }
 
   .sidenav {
-    height: 100%;
     width: 350px;
     position: fixed;
     z-index: 1;
-    top: 30;
+    top: 60px;
     left: 0;
+    height: calc(100vh - 60px);
+    max-height: calc(100vh - 60px);
     color: #344563;
     background-color: #f7faff;
     overflow-x: hidden;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    overflow-y: auto;
+    padding-top: 16px;
+    padding-bottom: 20px;
     z-index: 5;
-    padding-top: 30px;
     box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+    box-sizing: border-box;
   }
   
   .sidenav a {

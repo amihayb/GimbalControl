@@ -268,12 +268,13 @@ function MovementControl() {
   const movementPanel = document.createElement('div');
   movementPanel.id = 'movement-control-panel';
   movementPanel.style.cssText = `
-    height: 100%;
     width: 350px;
     position: fixed;
     z-index: 1;
     top: 0;
     left: 350px;
+    height: 100vh;
+    max-height: 100vh;
     color: #344563;
     background-color: #f7faff;
     overflow-x: hidden;
@@ -284,6 +285,7 @@ function MovementControl() {
     padding-bottom: 20px;
     z-index: 5;
     box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+    box-sizing: border-box;
   `;
 
   movementPanel.classList.add('movement-panel');
@@ -310,7 +312,7 @@ function MovementControl() {
     </div><br>
     
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
-      <button onclick="sendToAngles()">Send to Angles</button>
+      <button onclick="sendToAngles()" style="background-color: #c9dbf9; color: #202124;">Send to Angles</button>
     </div><br>
     
     <!-- Joystick Control -->
@@ -346,21 +348,25 @@ function MovementControl() {
 
     <hr>
     <h2 style="text-align: center;">Predefined Positions</h2>
-    <div style="margin: 10px 0;">
-      <button onclick="moveToPosition('home', 0, 0)">Home (0°, 0°)</button>
-      <button onclick="moveToPosition('topRight', 200, 65)">Top Right (200°, 65°)</button>
-      <button onclick="moveToPosition('topLeft', -200, 65)">Top Left (-200°, 65°)</button>
-      <button onclick="moveToPosition('bottomRight', 200, -15)">Bottom Right (200°, -15°)</button>
-      <button onclick="moveToPosition('bottomLeft', -200, -15)">Bottom Left (-200°, -15°)</button>
-    </div>
+    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
+      <button onclick="moveToPosition('topLeft', -200, 65)" title="Top Left (-200°, 65°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-up" style="transform: rotate(-45deg); display: inline-block;"></i></button>
+      <button onclick="moveToPosition('topRight', 200, 65)" title="Top Right (200°, 65°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-up" style="transform: rotate(45deg); display: inline-block;"></i></button>
+    </div><br>
+    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
+      <button onclick="moveToPosition('home', 0, 0)" title="Home (0°, 0°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-home"></i></button>
+    </div><br>
+    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
+      <button onclick="moveToPosition('bottomLeft', -200, -15)" title="Bottom Left (-200°, -15°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-down" style="transform: rotate(45deg); display: inline-block;"></i></button>
+      <button onclick="moveToPosition('bottomRight', 200, -15)" title="Bottom Right (200°, -15°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-down" style="transform: rotate(-45deg); display: inline-block;"></i></button>
+    </div><br>
     
     <hr>
     <h2 style="text-align: center;">Scenarios</h2>
-    <div style="margin: 10px 0;">
-      <button onclick="runScenario('scan')">Scan</button>
-      <button onclick="runScenario('demo1')">Demo 1</button>
-      <button onclick="runScenario('demo2')">Demo 2</button>
-    </div>
+    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
+      <button onclick="runScenario('scan')" style="background-color: #c9dbf9; color: #202124;">Scan</button>
+      <button onclick="runScenario('demo1')" style="background-color: #c9dbf9; color: #202124;">Demo 1</button>
+      <button onclick="runScenario('demo2')" style="background-color: #c9dbf9; color: #202124;">Demo 2</button>
+    </div><br>
     
     <hr>
     <h2 style="text-align: center;">Complex Scenarios</h2>
@@ -517,12 +523,13 @@ function InstallationSetup() {
   installationPanel.id = 'installation-setup-panel';
   installationPanel.classList.add('movement-panel');
   installationPanel.style.cssText = `
-    height: 100%;
     width: 350px;
     position: fixed;
     z-index: 1;
     top: 0;
     left: 350px;
+    height: 100vh;
+    max-height: 100vh;
     color: #344563;
     background-color: #f7faff;
     overflow-x: hidden;
@@ -533,6 +540,7 @@ function InstallationSetup() {
     padding-bottom: 20px;
     z-index: 5;
     box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+    box-sizing: border-box;
   `;
 
   installationPanel.innerHTML = `

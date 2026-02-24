@@ -57,7 +57,7 @@ async function connectToggle(button) {
 
     showLiveData(true);
   } else {
-    showLiveData(false);
+    await showLiveData(false);
     // await sendMsg('eo=1;');
     await sendMsg('R1[3]=0\r');
     closeSerialPort();
