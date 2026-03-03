@@ -552,7 +552,8 @@ function InstallationSetup() {
     <hr>
     <h2 style="text-align: center;">Setup Procedures</h2>
     <div style="margin: 10px 0;">
-      <a class="button" onclick="setZeroAngles()">Set Zero Angles</a>
+      <a class="button" onclick="setZeroAngles('tr')">Set Zero TR</a>
+      <a class="button" onclick="setZeroAngles('el')">Set Zero EL</a>
       <a class="button" onclick="commutation(1)">Commutation Traverse</a>
       <a class="button" onclick="commutation(2)">Commutation Elevation</a>
       <a class="button" onclick="saveElmo()">Save Elmo Settings</a>

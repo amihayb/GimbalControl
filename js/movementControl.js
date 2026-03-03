@@ -194,18 +194,30 @@ function commutation() {
 }
 
 /**
- * Set zero angles for the gimbal
+ * Set zero angle for the specified axis
+ * @param {string} ax - 'tr' for traverse (S1) or 'el' for elevation (S2). Omit to set both axes.
  */
-async function setZeroAngles() {
-  // Check serial connection
+async function setZeroAngles(ax) {
   if (!serialPort) {
     updateMovementStatus('Error: No connection to device', 'error');
     return false;
   }
 
+  // If no axis specified, set both
+  if (!ax) {
+    await setZeroAngles('tr');
+    await setZeroAngles('el');
+    return;
+  }
+
+  const isTr = ax === 'tr';
+  const axisNum = isTr ? '1' : '2';
+  const axisName = isTr ? 'traverse' : 'elevation';
+  const axisNameCap = isTr ? 'Traverse' : 'Elevation';
+
   const result = await Swal.fire({
-    title: 'Set Current Angle',
-    text: `Are you sure you want to set current angle to zero?`,
+    title: `Set Zero ${axisNameCap}`,
+    text: `Are you sure you want to set current ${axisName} angle to zero?`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'Yes',
@@ -215,115 +227,31 @@ async function setZeroAngles() {
     console.log('Canceled');
     return;
   }
-  
-  updateMovementStatus('Setting zero angles...', 'running');
+
+  updateMovementStatus(`Setting zero ${axisName}...`, 'running');
   showLiveData(false);
   await new Promise(resolve => setTimeout(resolve, 50));
   await readMsg('EO=1;;\r', { skipLock: true });
-  // await readMsg(';;\r', { skipLock: true });
-  // await readMsg(';;\r', { skipLock: true });
-  /*
-  // await flushSerialReader();
-
-  // var tRead = await readMsg('S1[17]');
-  // const curOffset = parseFloat(tRead.replace(';', ''));
-  // var tRead = await readMsg('ax1.px');
-  // const curAngle = parseFloat(tRead.replace(';', ''));
-
-  // Retry logic for reading values
-  let curOffset, curAngle;
-  let attempts = 0;
-  const maxAttempts = 5;
-  
-  while (attempts < maxAttempts) {
-    try {
-      var tRead = await readMsg('S1[17];AX1.px;S2[17];AX2.px;;\r', { skipLock: true });
-      console.log(`Attempt ${attempts + 1}: ${tRead}`);
-      let pairs = parsePairs(tRead);
-      curOffsetTr = getValue(pairs, "S1[17]");
-      curAngleTr = getValue(pairs, "AX1.px");
-      curOffsetEl = getValue(pairs, "S2[17]");
-      curAngleEl = getValue(pairs, "AX2.px");
-      console.log(`Values: curOffset=${curOffsetTr}, curAngle=${curAngleTr}, curOffsetEl=${curOffsetEl}, curAngleEl=${curAngleEl}`);
-      
-      // Check if both values are valid numbers
-      if (typeof curOffsetTr === 'number' && typeof curAngleTr === 'number' && 
-          !isNaN(curOffsetTr) && !isNaN(curAngleTr) && typeof curOffsetEl === 'number' && typeof curAngleEl === 'number' && 
-          !isNaN(curOffsetEl) && !isNaN(curAngleEl)) {
-        console.log('Valid values received');
-        break;
-      } else {
-        console.log(`Invalid values on attempt ${attempts + 1}`);
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms before retry
-        }
-      }
-    } catch (error) {
-      console.error(`Error on attempt ${attempts + 1}:`, error);
-      attempts++;
-      if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-  }
-  
-  // If all attempts failed, show error and return
-  if (attempts >= maxAttempts) {
-    updateMovementStatus('Failed to read valid offset and angle values after 5 attempts', 'error');
-    console.error('Failed to get valid values after 5 attempts');
-    return;
-  }
-
-  var newOffsetTr = curOffsetTr - curAngleTr;
-  var newOffsetEl = curOffsetEl - curAngleEl;
-
-  // Stop motor using toggle function
-  const motorToggleElement = document.getElementById('motor-toggle');
-  if (motorToggleElement && motorToggleElement.checked) {
-    motorToggleElement.checked = false;
-    motorToggle(motorToggleElement);
-  }
-
-  sendMsg('S1[17]=' + newOffsetTr + ';\r');
-  sendMsg('S2[17]=' + newOffsetEl + ';\r');
-  console.log('S1[17]=' + newOffsetTr);
-  console.log('S2[17]=' + newOffsetEl);
-  */
 
   sendMsg(';\r');
-  sendMsg('s2[17]=s2[17]-ax2.px;\r');
-  sendMsg('s1[17]=s1[17]-ax1.px;\r');
+  sendMsg(`s${axisNum}[17]=s${axisNum}[17]-ax${axisNum}.px;\r`);
 
-  var newOffsetTr = await readMsg('S1[17];\r');
-  console.log(newOffsetTr);
-  var newOffsetEl = await readMsg('S2[17];\r');
-  console.log(newOffsetEl);
+  const newOffset = await readMsg(`S${axisNum}[17];\r`);
+  console.log(newOffset);
 
-
-  if (newOffsetTr > 0.0) {
-    sendMsg('S1[18]=0;\r');
-    console.log('S1[18]=0;');
+  if (parseFloat(newOffset) > 0.0) {
+    sendMsg(`S${axisNum}[18]=0;\r`);
+    console.log(`S${axisNum}[18]=0;`);
   } else {
-    sendMsg('S1[18]=-1;\r');
-    console.log('S1[18]=-1;');
+    sendMsg(`S${axisNum}[18]=-1;\r`);
+    console.log(`S${axisNum}[18]=-1;`);
   }
-  if (newOffsetEl > 0.0) {
-    sendMsg('S2[18]=0;\r');
-    console.log('S2[18]=0;');
-  } else {
-    sendMsg('S2[18]=-1;\r');
-    console.log('S2[18]=-1;');
-  }
-  
-  sendMsg('s1[1]=0;\r');    // Restart encoder
-  sendMsg('s1[1]=5;\r');    // Set back encoder type
-  sendMsg('s2[1]=0;\r');    // Restart encoder
-  sendMsg('s2[1]=5;\r');    // Set back encoder type
+
+  sendMsg(`s${axisNum}[1]=0;\r`);    // Restart encoder
+  sendMsg(`s${axisNum}[1]=5;\r`);    // Set back encoder type
 
   await new Promise(resolve => setTimeout(resolve, 200));
-  // await flushSerialReader();
-  updateMovementStatus('Zero angles set', 'ready');
+  updateMovementStatus(`Zero ${axisName} set`, 'ready');
   showLiveData(true);
 }
 
