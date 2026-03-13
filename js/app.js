@@ -38,6 +38,31 @@ let rows = {
 // ==================== UI-Specific Serial Functions ====================
 
 /**
+ * Emergency stop - send stop commands when stop sign is clicked
+ */
+async function stopSignClick() {
+  if (!serialPort) return;
+  for (let i = 0; i < 5; i++) {
+    sendMsg('kl;r1[1]=0;\r');
+    if (i < 4) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+  turnOffMotor();
+}
+
+/**
+ * Update the connection stop sign overlay (shown when connected)
+ */
+function updateConnectionIndicator() {
+  const stopSign = document.getElementById('connectionStopSign');
+  const toggle = document.getElementById('connection-toggle');
+  if (stopSign && toggle) {
+    stopSign.classList.toggle('connected', toggle.checked);
+  }
+}
+
+/**
  * Toggle serial port connection (UI-specific)
  * @param {HTMLElement} button - The toggle button element
  */
@@ -47,6 +72,7 @@ async function connectToggle(button) {
     if (!isConnected) {
       //document.getElementById('connection-toggle').checked = false;
       button.checked = false; // Uncheck the toggle button if connection fails
+      updateConnectionIndicator();
       return
     }
     // await readMsg('eo=0;');
@@ -62,6 +88,7 @@ async function connectToggle(button) {
     await sendMsg('R1[3]=0\r');
     closeSerialPort();
   }
+  updateConnectionIndicator();
 }
 
 /**

@@ -196,6 +196,23 @@ body {
     font-size: 17px;
   }
 
+  .connection-stop-sign {
+    display: none;
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    width: 96px;
+    height: 96px;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .connection-stop-sign.connected {
+    display: block;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
   .sidenav {
     width: 350px;
     position: fixed;
