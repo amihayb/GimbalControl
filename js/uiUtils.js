@@ -267,32 +267,11 @@ function MovementControl() {
   // Create movement control sidebar panel
   const movementPanel = document.createElement('div');
   movementPanel.id = 'movement-control-panel';
-  movementPanel.style.cssText = `
-    width: 350px;
-    position: fixed;
-    z-index: 1;
-    top: 0;
-    left: 350px;
-    height: 100vh;
-    max-height: 100vh;
-    color: #344563;
-    background-color: #f7faff;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding-left: 20px;
-    padding-right: 20px;
-    padding-top: 100px;
-    padding-bottom: 20px;
-    z-index: 5;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.5);
-    box-sizing: border-box;
-  `;
-
   movementPanel.classList.add('movement-panel');
   movementPanel.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h1 style="margin: 0;">Movement Control</h1>
-      <button onclick="closeMovementControl()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #344563;">×</button>
+    <div class="panel-header">
+      <h1>Movement Control</h1>
+      <button class="panel-close-btn" onclick="closeMovementControl()">×</button>
     </div>
     
     <!-- Angle Control Section -->
@@ -347,7 +326,7 @@ function MovementControl() {
     </div>
 
     <hr>
-    <h2 style="text-align: center;">Predefined Positions</h2>
+    <h2>Predefined Positions</h2>
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
       <button onclick="moveToPosition('topLeft', -200, 65)" title="Top Left (-200°, 65°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-up" style="transform: rotate(-45deg); display: inline-block;"></i></button>
       <button onclick="moveToPosition('topRight', 200, 65)" title="Top Right (200°, 65°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-up" style="transform: rotate(45deg); display: inline-block;"></i></button>
@@ -361,7 +340,7 @@ function MovementControl() {
     </div><br>
     
     <hr>
-    <h2 style="text-align: center;">Scenarios</h2>
+    <h2>Scenarios</h2>
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
       <button onclick="runScenario('scan')" style="background-color: #c9dbf9; color: #202124;">Scan</button>
       <button onclick="runScenario('demo1')" style="background-color: #c9dbf9; color: #202124;">Demo 1</button>
@@ -369,7 +348,7 @@ function MovementControl() {
     </div><br>
     
     <hr>
-    <h2 style="text-align: center;">Complex Scenarios</h2>
+    <h2>Complex Scenarios</h2>
     <div style="margin: 10px 0;">
       <button onclick="openComplexScenario('sine')">Sine Move</button>
       <button onclick="openComplexScenario('linear')">Repeat Linear</button>
@@ -527,35 +506,15 @@ function InstallationSetup() {
   const installationPanel = document.createElement('div');
   installationPanel.id = 'installation-setup-panel';
   installationPanel.classList.add('movement-panel');
-  installationPanel.style.cssText = `
-    width: 350px;
-    position: fixed;
-    z-index: 1;
-    top: 0;
-    left: 350px;
-    height: 100vh;
-    max-height: 100vh;
-    color: #344563;
-    background-color: #f7faff;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding-left: 20px;
-    padding-right: 20px;
-    padding-top: 100px;
-    padding-bottom: 20px;
-    z-index: 5;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.5);
-    box-sizing: border-box;
-  `;
 
   installationPanel.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h1 style="margin: 0;">Installation Setup</h1>
-      <button onclick="closeInstallationSetup()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #344563;">×</button>
+    <div class="panel-header">
+      <h1>Installation Setup</h1>
+      <button class="panel-close-btn" onclick="closeInstallationSetup()">×</button>
     </div>
     
     <hr>
-    <h2 style="text-align: center;">Setup Procedures</h2>
+    <h2>Setup Procedures</h2>
     <div style="margin: 10px 0;">
       <a class="button" onclick="setZeroAngles('tr')">Set Zero TR</a>
       <a class="button" onclick="setZeroAngles('el')">Set Zero EL</a>
@@ -588,6 +547,150 @@ function closeInstallationSetup() {
     explanationTextRestore.style.marginLeft = '370px'; // Back to original: 350px sidebar + 20px gap
     plotAreaRestore.style.marginLeft = '370px';
   }
+}
+
+// ==================== ATP UI Functions ====================
+
+/**
+ * Initialize and display the ATP (Acceptance Test Procedure) panel
+ */
+function ATP() {
+  // Update button states
+  document.querySelectorAll('.button').forEach(button => {
+    button.classList.remove('active');
+  });
+  const atpButton = document.querySelector('a[onclick*="ATP"]');
+  if (atpButton) {
+    atpButton.classList.add('active');
+  }
+
+  // Hide the explanation text
+  const explanationTextElement = document.getElementById('explenation_text');
+  explanationTextElement.style.display = 'none';
+
+  // Clear any existing content in plot area
+  const plotAreaElement = document.getElementById('plot-area');
+  plotAreaElement.innerHTML = '';
+
+  // Remove existing ATP panel if it exists
+  const existingPanel = document.getElementById('atp-panel');
+  if (existingPanel) {
+    existingPanel.remove();
+  }
+
+  // Create ATP sidebar panel
+  const atpPanel = document.createElement('div');
+  atpPanel.id = 'atp-panel';
+  atpPanel.classList.add('movement-panel');
+
+  atpPanel.innerHTML = `
+    <div class="panel-header">
+      <h1>ATP</h1>
+      <button class="panel-close-btn" onclick="closeATP()">×</button>
+    </div>
+    
+    <hr>
+    <h2>Test Procedures</h2>
+    <div style="margin: 10px 0;">
+      <a class="button" onclick="runIBIT()">IBIT</a>
+      <a class="button" onclick="runSineTest()">Sine Test</a>
+      <a class="button" onclick="runFrictionTest()">Friction Test</a>
+    </div>
+  `;
+
+  document.body.appendChild(atpPanel);
+
+  // Adjust main content area to account for extended sidebar
+  const explanationTextEl = document.getElementById('explenation_text');
+  const plotAreaEl = document.getElementById('plot-area');
+  explanationTextEl.style.marginLeft = '720px';
+  plotAreaEl.style.marginLeft = '720px';
+}
+
+/**
+ * Close the ATP panel and restore layout
+ */
+function closeATP() {
+  const atpPanel = document.getElementById('atp-panel');
+  if (atpPanel) {
+    atpPanel.remove();
+
+    // Restore original layout
+    const explanationTextRestore = document.getElementById('explenation_text');
+    const plotAreaRestore = document.getElementById('plot-area');
+    explanationTextRestore.style.marginLeft = '370px';
+    plotAreaRestore.style.marginLeft = '370px';
+  }
+}
+
+/**
+ * Run IBIT (Built-In Test) procedure
+ */
+async function runIBIT() {
+  if (!serialPort) {
+    Swal.fire({ title: 'No Connection', text: 'Please connect to the device first', icon: 'error' });
+    return;
+  }
+
+  const motorToggleEl = document.getElementById('motor-toggle');
+  if (!motorToggleEl || !motorToggleEl.checked) {
+    Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running IBIT', icon: 'warning' });
+    return;
+  }
+
+  // Trigger IBIT
+  await sendMsg('R1[1]=5\r');
+
+  // Start recording
+  shouldRecordData = true;
+  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [] };
+  startTime = Date.now();
+  const recordButton = document.getElementById('recordButton');
+  if (recordButton) recordButton.style.color = '#dc3545';
+
+  // Poll R1[51] until result or timeout (30 seconds)
+  const maxWaitMs = 30000;
+  const pollIntervalMs = 200;
+  const pollStart = Date.now();
+  let ibitResult = null;
+
+  while (Date.now() - pollStart < maxWaitMs) {
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+
+    const response = await readMsg('R1[51];;\r');
+    const value = parseInt(response.trim().split(';')[0]);
+
+    if (value === 4) { ibitResult = 'success'; break; }
+    if (value === 9) { ibitResult = 'failure'; break; }
+  }
+
+  // Stop recording
+  shouldRecordData = false;
+  if (recordButton) recordButton.style.color = '';
+  saveDataToCSV('IBIT');
+
+  // Show result
+  if (ibitResult === 'success') {
+    Swal.fire({ title: 'IBIT Passed ✓', text: 'IBIT completed successfully (R1[51] = 4)', icon: 'success' });
+  } else if (ibitResult === 'failure') {
+    Swal.fire({ title: 'IBIT Failed ✗', text: 'IBIT test failed (R1[51] = 9)', icon: 'error' });
+  } else {
+    Swal.fire({ title: 'IBIT Timeout', text: 'IBIT did not complete within 30 seconds', icon: 'warning' });
+  }
+}
+
+/**
+ * Placeholder: Run Sine Test
+ */
+function runSineTest() {
+  Swal.fire({ title: 'Sine Test', text: 'Sine Test is not yet implemented.', icon: 'info' });
+}
+
+/**
+ * Placeholder: Run Friction Test
+ */
+function runFrictionTest() {
+  Swal.fire({ title: 'Friction Test', text: 'Friction Test is not yet implemented.', icon: 'info' });
 }
 
 // ==================== Input Value Functions ====================
@@ -634,4 +737,9 @@ window.openComplexScenario = openComplexScenario;
 window.closeComplexScenario = closeComplexScenario;
 window.InstallationSetup = InstallationSetup;
 window.closeInstallationSetup = closeInstallationSetup;
+window.ATP = ATP;
+window.closeATP = closeATP;
+window.runIBIT = runIBIT;
+window.runSineTest = runSineTest;
+window.runFrictionTest = runFrictionTest;
 window.updateInputValue = updateInputValue;

@@ -43,6 +43,50 @@ body {
     color: #202124;
   }
 
+  /* Movement panel layout */
+  .movement-panel {
+    width: 350px;
+    position: fixed;
+    top: 0;
+    left: 350px;
+    height: 100vh;
+    max-height: 100vh;
+    color: #344563;
+    background-color: #f7faff;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 100px 20px 20px;
+    z-index: 5;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+    box-sizing: border-box;
+  }
+
+  .panel-header {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .panel-header h1 {
+    margin: 0;
+  }
+
+  .panel-close-btn {
+    position: absolute;
+    right: 0;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #344563;
+  }
+
+  .movement-panel h2 {
+    text-align: center;
+  }
+
   /* Movement panel buttons styling */
   .movement-panel a.button {
     background-color: #c9dbf9;

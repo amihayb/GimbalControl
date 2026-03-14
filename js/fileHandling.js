@@ -163,13 +163,28 @@ function exportToCsv(filename, rows) {
 }
 
 /**
- * Save recorded data to CSV file with timestamp
+ * Format current date/time as yymmdd_HHMMSS
+ * @returns {string} Formatted timestamp string
  */
-function saveDataToCSV() {
+function formatTimestamp() {
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const HH = String(d.getHours()).padStart(2, '0');
+  const MM = String(d.getMinutes()).padStart(2, '0');
+  const SS = String(d.getSeconds()).padStart(2, '0');
+  return `${yy}${mm}${dd}_${HH}${MM}${SS}`;
+}
+
+/**
+ * Save recorded data to CSV file with timestamp
+ * @param {string} prefix - Filename prefix (default: 'lynx')
+ */
+function saveDataToCSV(prefix = 'lynx') {
   let csvContent = "Time_s,Tr_Angle_deg,Tr_Velocity_deg/s,Tr_Current_A,El_Angle_deg,El_Velocity_deg/s,El_Current_A\n";
   
   for (let i = 0; i < rows.time.length; i++) {
-    // Helper function to safely format values, handling null/undefined
     const safeFormat = (value) => {
       return (value !== null && value !== undefined && !isNaN(value)) ? value.toFixed(3) : '';
     };
@@ -181,7 +196,7 @@ function saveDataToCSV() {
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
-  link.setAttribute("download", `torque_test_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`);
+  link.setAttribute("download", `${prefix}_${formatTimestamp()}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
@@ -195,4 +210,5 @@ window.readFile = readFile;
 window.processData = processData;
 window.export2csv = export2csv;
 window.exportToCsv = exportToCsv;
+window.formatTimestamp = formatTimestamp;
 window.saveDataToCSV = saveDataToCSV;
