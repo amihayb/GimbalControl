@@ -55,7 +55,7 @@ async function stopSignClick() {
  * Update the connection stop sign overlay (shown when connected)
  */
 function updateConnectionIndicator() {
-  const stopSign = document.getElementById('connectionStopSign');
+  const stopSign = document.getElementById('emergency-stop');
   const toggle = document.getElementById('connection-toggle');
   if (stopSign && toggle) {
     stopSign.classList.toggle('connected', toggle.checked);

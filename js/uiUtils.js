@@ -308,7 +308,7 @@ function MovementControl() {
     
     <div class="target-control" title="Movement velocity">
       <label for="movementVelocity">Velocity [deg/s]</label>
-      <input type="number" id="movementVelocity" value="80" min="1" max="100" style="width: 60px;" />
+      <input type="number" id="movementVelocity" value="80" min="0" max="80" style="width: 60px;" />
     </div><br>
     
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
@@ -378,6 +378,11 @@ function MovementControl() {
   `;
 
   document.body.appendChild(movementPanel);
+
+  // Send velocity to both axes when the user changes the velocity input
+  const velInput = document.getElementById('movementVelocity');
+  velInput.addEventListener('change', () => sendVelocity(velInput.value));
+  velInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendVelocity(velInput.value); });
   
   // Adjust main content area to account for extended sidebar
   const explanationTextEl = document.getElementById('explenation_text');

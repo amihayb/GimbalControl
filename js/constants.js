@@ -40,8 +40,8 @@ const CSV_MIME_TYPE = 'text/csv;charset=utf-8;';
 
 // Movement control constants
 const DEFAULT_VELOCITY = 80; // deg/s
-const MIN_VELOCITY = 1;
-const MAX_VELOCITY = 100;
+const MIN_VELOCITY = 0;
+const MAX_VELOCITY = 80;
 const JOYSTICK_STEP = 1;
 
 // Predefined positions

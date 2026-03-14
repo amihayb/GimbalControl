@@ -347,6 +347,29 @@ function turnOffMotor() {
   }
 }
 
+/**
+ * Send velocity to both axes when the movementVelocity input changes
+ * @param {number|string} v - Velocity value in deg/s
+ */
+function sendVelocity(v) {
+  if (!serialPort) return;
+  let vel = parseFloat(v);
+  if (isNaN(vel)) return;
+
+  if (vel < 0) {
+    vel = Math.abs(vel);
+    document.getElementById('movementVelocity').value = vel;
+  }
+
+  if (vel > MAX_VELOCITY) {
+    vel = MAX_VELOCITY;
+    document.getElementById('movementVelocity').value = MAX_VELOCITY;
+    updateMovementStatus(`Velocity clamped to max ${MAX_VELOCITY} deg/s`, 'error');
+  }
+
+  sendMsg(`R1[13]=${vel}; R1[23]=${vel};`);
+}
+
 // ==================== Status Functions ====================
 
 /**
@@ -379,3 +402,4 @@ window.commutation = commutation;
 window.setZeroAngles = setZeroAngles;
 window.playTune = playTune;
 window.turnOffMotor = turnOffMotor;
+window.sendVelocity = sendVelocity;
