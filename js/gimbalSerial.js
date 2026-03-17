@@ -121,6 +121,7 @@ async function readMsg(message, options = {}) {
 
   const exec = async () => {
     try {
+      const sendTime = Date.now();
       await writeSerialMessage(message);
       
       // Read response with timeout
@@ -137,6 +138,7 @@ async function readMsg(message, options = {}) {
           
           const chunk = new TextDecoder().decode(value);
           response += chunk;
+          // console.log(`readMsg raw chunk (${Date.now() - sendTime}ms): "${chunk.replace(/\r/g, '\\r').replace(/\n/g, '\\n')}"`);
           
           // Check if we have a complete response (ends with semicolon or newline)
           if (chunk.includes(';;')) {   // chunk.includes('\r')
@@ -222,47 +224,16 @@ async function reconnectSerialPort() {
 }
 
 /**
- * Flush the serial reader buffer
+ * Flush stale data from the serial buffer by waiting briefly and then
+ * sending a dummy query ('px;;') and discarding its response.
+ * Any buffered echoes from previous commands are consumed and thrown away,
+ * leaving the buffer clean for the next real read.
  */
 async function flushSerialReader() {
-  if (reader) {
-    try {
-      const timeoutMs = 1000; // 1 seconds timeout
-      const startTime = Date.now();
-      
-      while (true) {
-        // Check for timeout
-        if (Date.now() - startTime > timeoutMs) {
-          console.log('flushSerialReader timeout - stopping flush');
-          break;
-        }
-        
-        // Create a timeout promise that rejects after remaining time
-        const remainingTime = Math.max(0, timeoutMs - (Date.now() - startTime));
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Read timeout')), remainingTime)
-        );
-        
-        try {
-          const result = await Promise.race([
-            reader.read(),
-            timeoutPromise
-          ]);
-          
-          if (result.done) break;
-        } catch (readError) {
-          // If it's a timeout error, break the loop
-          if (readError.message === 'Read timeout') {
-            console.log('flushSerialReader read timeout - stopping flush');
-            break;
-          }
-          // For other errors, continue to the next iteration
-        }
-      }
-    } catch (error) {
-      // Ignore errors when flushing
-    }
-  }
+  if (!reader) return;
+  await new Promise(resolve => setTimeout(resolve, 100));
+  await readMsg('px;;\r', { skipLock: true });
+  console.log('flushSerialReader: buffer synced');
 }
 
 // ==================== Utility Functions ====================

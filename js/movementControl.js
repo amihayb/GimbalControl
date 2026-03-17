@@ -181,17 +181,6 @@ function joystickCmd(direction) {
 
 // ==================== Installation Setup Functions ====================
 
-/**
- * Run commutation procedure
- */
-function commutation() {
-  if (!validateMovementPrerequisites()) {
-    return;
-  }
-  
-  updateMovementStatus('Running commutation procedure...', 'running');
-  //sendMsg('R1[1]=2');
-}
 
 /**
  * Set zero angle for the specified axis
@@ -279,38 +268,38 @@ async function commutation(axis = 2) {
   
   updateMovementStatus('Performing commutation...', 'running');
   showLiveData(false);
+  await flushSerialReader();
+  // await new Promise(resolve => setTimeout(resolve, 50));
+  // await readMsg('EO=1;;\r', { skipLock: true });
 
-  turnOffMotor()
-  sendMsg('rz[1]=167');
-  await new Promise(resolve => setTimeout(resolve, 50));
-  // await flushSerialReader();
+  await turnOffMotor();
+  await readMsg(`ax${axis}.UM=3;ax${axis}.MO=1;`);   // Stepper mode, enable motor, set torque control
+  await new Promise(resolve => setTimeout(resolve, 500));
+  await readMsg(`ax${axis}.TC=1;`);   // Set torque control
+  updateMovementStatus('Waiting for commutation to settle...', 'running');
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
-  sendMsg(`ax${axis}.ca[15]=5;ax${axis}.ca[10]=1;`);
-  await new Promise(resolve => setTimeout(resolve, 50));
-  sendMsg(`ax${axis}.mo=1`);
-  // Wait for commutation to complete by polling ax${axis}.SO every 100ms
-  let commutationDone = false;
-  const timeoutMs = 20000; // 20 seconds timeout
-  const startTime = Date.now();
-  
-  while (!commutationDone) {
-    // Check for timeout
-    if (Date.now() - startTime > timeoutMs) {
-      updateMovementStatus('Commutation timeout - operation may have failed', 'error');
-      showLiveData(true);
-      return false;
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 100));
-    let soValue = await readMsg(`ax${axis}.SO;;`);
-    // Try to extract the value (could be "ax${axis}.SO=1" or just "1")
-    let match = soValue && soValue.match ? soValue.match(/(\d+)/) : null;
-    let value = match ? parseInt(match[1], 10) : parseInt(soValue, 10);
-    if (value === 1) {
-      commutationDone = true;
-    }
+  let wf40 = 0;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const wf40Raw = await readMsg(`ax${axis}.WF[40];;`);
+    console.log(wf40Raw);
+    const match = wf40Raw.match(/WF\[40\][^-\d]*([-+]?\d+\.?\d*(?:[eE][+-]?\d+)?)/);
+    wf40 = match ? parseFloat(match[1]) : NaN;
+    if (!isNaN(wf40) && wf40 !== 0) break;
+    console.warn(`WF[40] read attempt ${attempt + 1} failed (got: ${wf40Raw}), retrying...`);
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
-  sendMsg('rz[1]=165');
+  await sendMsg(`ax${axis}.MO=0;ax${axis}.UM=5;`); // Disable motor, restore mode
+  if (isNaN(wf40) || wf40 === 0) {
+    updateMovementStatus('Commutation failed: could not read WF[40]', 'error');
+    showLiveData(true);
+    return false;
+  }
+  const newCommutation = (wf40 * 0.09375 + 1024) & 0xfff;
+
+  await sendMsg(`ax${axis}.CA[7]=${newCommutation};`);
+  console.log(`WF[40] = ${wf40}, new CA[7] = ${newCommutation}`);
+
   await new Promise(resolve => setTimeout(resolve, 200));
   updateMovementStatus('Commutation complete', 'ready');
   showLiveData(true);
