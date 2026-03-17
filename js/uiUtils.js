@@ -291,7 +291,7 @@ function MovementControl() {
     </div><br>
     
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
-      <button onclick="sendToAngles()" style="background-color: #c9dbf9; color: #202124;">Send to Angles</button>
+      <button onclick="sendToAngles()" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Send to Angles</button>
     </div><br>
     
     <!-- Joystick Control -->
@@ -328,23 +328,23 @@ function MovementControl() {
     <hr>
     <h2>Predefined Positions</h2>
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="moveToPosition('topLeft', -200, 65)" title="Top Left (-200°, 65°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-up" style="transform: rotate(-45deg); display: inline-block;"></i></button>
-      <button onclick="moveToPosition('topRight', 200, 65)" title="Top Right (200°, 65°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-up" style="transform: rotate(45deg); display: inline-block;"></i></button>
+      <button onclick="moveToPosition('topLeft', -200, 65)" title="Top Left (-200°, 65°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-up" style="transform: rotate(-45deg); display: inline-block;"></i></button>
+      <button onclick="moveToPosition('topRight', 200, 65)" title="Top Right (200°, 65°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-up" style="transform: rotate(45deg); display: inline-block;"></i></button>
     </div><br>
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
-      <button onclick="moveToPosition('home', 0, 0)" title="Home (0°, 0°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-home"></i></button>
+      <button onclick="moveToPosition('home', 0, 0)" title="Home (0°, 0°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-home"></i></button>
     </div><br>
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="moveToPosition('bottomLeft', -200, -15)" title="Bottom Left (-200°, -15°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-down" style="transform: rotate(45deg); display: inline-block;"></i></button>
-      <button onclick="moveToPosition('bottomRight', 200, -15)" title="Bottom Right (200°, -15°)" style="background-color: #c9dbf9; color: #202124;"><i class="fa fa-arrow-down" style="transform: rotate(-45deg); display: inline-block;"></i></button>
+      <button onclick="moveToPosition('bottomLeft', -200, -15)" title="Bottom Left (-200°, -15°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-down" style="transform: rotate(45deg); display: inline-block;"></i></button>
+      <button onclick="moveToPosition('bottomRight', 200, -15)" title="Bottom Right (200°, -15°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-down" style="transform: rotate(-45deg); display: inline-block;"></i></button>
     </div><br>
     
     <hr>
     <h2>Scenarios</h2>
     <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="runScenario('scan')" style="background-color: #c9dbf9; color: #202124;">Scan</button>
-      <button onclick="runScenario('demo1')" style="background-color: #c9dbf9; color: #202124;">Demo 1</button>
-      <button onclick="runScenario('demo2')" style="background-color: #c9dbf9; color: #202124;">Demo 2</button>
+      <button onclick="runScenario('scan')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Scan</button>
+      <button onclick="runScenario('demo1')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Demo 1</button>
+      <button onclick="runScenario('demo2')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Demo 2</button>
     </div><br>
     
     <hr>
@@ -401,12 +401,12 @@ function openComplexScenario(type) {
 
   const submenu = document.createElement('div');
   submenu.id = 'complex-scenario-submenu';
+  submenu.classList.add('scenario-submenu');
   submenu.style.cssText = `
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: white;
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -658,8 +658,9 @@ async function runIBIT() {
     await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
 
     const response = await readMsg('R1[51];;\r');
+    console.log(response);
     const value = parseInt(response.trim().split(';')[0]);
-
+    console.log(value);
     if (value === 4) { ibitResult = 'success'; break; }
     if (value === 9) { ibitResult = 'failure'; break; }
   }

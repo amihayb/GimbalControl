@@ -26,6 +26,16 @@
   <link rel="icon" type="image/png" sizes="192x192" href="images/logo-192x192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="images/logo-512x512.png">
   
+  <!-- Early theme init: apply saved theme before render to avoid flash -->
+  <script>
+    (function () {
+      var theme = localStorage.getItem('gimbal-theme');
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
   <!-- Scripts -->
   <script src="vendor/regression.min.js"></script>
   <script src="vendor/sweetalert2@11.js"></script>
@@ -39,6 +49,7 @@
       <input id="file-selector" type="file" />
     </span>
     <a id="recordButton" onclick="recordData()" title="Record Data"><i class="fa fa-circle"></i></a>
+    <button id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-moon-o" id="theme-icon"></i></button>
     <a onclick="about()" title="About"><i class="fa fa-info-circle"></i></a>
     <img id="emergency-stop" class="connection-stop-sign" src="images/StopSign.svg" alt="Connected" title="EMERGENCY STOP!" onclick="stopSignClick()">
     <img onclick="about()" height="36" src="images/logo-title.svg" alt="Blau Robotics" id="LogoBlau">
@@ -101,7 +112,7 @@
     <br><hr><br>
     <div class="target-control" title="Movement status">
       <label>Status</label>
-      <div id="movementStatus" style="font-size: 12px; color: #6c757d; text-align: center;">Ready for commands</div>
+      <div id="movementStatus" style="font-size: 12px; color: var(--color-text-muted); text-align: center;">Ready for commands</div>
     </div>
   </div>
   <div id="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
@@ -110,7 +121,7 @@
       Drag & Drop CSV File Here
       <br>
       <picture id="picture_main">
-        <img src="images/Device.jpg" alt="Device Image" id="deviceImage" style="max-width: 100%; height: auto; width: 1000px;">
+        <img src="images/lynx-day.png" alt="Device Image" id="lynxImage" style="max-width: 100%; height: auto; width: 1000px;">
       </picture>
       <br>
       <div id="explenation_label">

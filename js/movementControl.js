@@ -275,6 +275,67 @@ async function commutation(axis = 2) {
   await turnOffMotor();
   await readMsg(`ax${axis}.UM=3;ax${axis}.MO=1;`);   // Stepper mode, enable motor, set torque control
   await new Promise(resolve => setTimeout(resolve, 500));
+  await readMsg(`ax${axis}.TC=2;`);   // Set torque control
+  updateMovementStatus('Waiting for commutation to settle...', 'running');
+  await new Promise(resolve => setTimeout(resolve, 5000));
+
+  let wf40 = 0;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const wf40Raw = await readMsg(`ax${axis}.WF[40];;`);
+    console.log(wf40Raw);
+    const match = wf40Raw.match(/WF\[40\][^-\d]*([-+]?\d+\.?\d*(?:[eE][+-]?\d+)?)/);
+    wf40 = match ? parseFloat(match[1]) : NaN;
+    if (!isNaN(wf40) && wf40 !== 0) break;
+    console.warn(`WF[40] read attempt ${attempt + 1} failed (got: ${wf40Raw}), retrying...`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  await sendMsg(`ax${axis}.MO=0;ax${axis}.UM=5;`); // Disable motor, restore mode
+  if (isNaN(wf40) || wf40 === 0) {
+    updateMovementStatus('Commutation failed: could not read WF[40]', 'error');
+    showLiveData(true);
+    return false;
+  }
+  const newCommutation = (wf40 * 0.09375 + 1024) & 0xfff;
+
+  await sendMsg(`ax${axis}.CA[7]=${newCommutation};`);
+  console.log(`WF[40] = ${wf40}, new CA[7] = ${newCommutation}`);
+
+  await new Promise(resolve => setTimeout(resolve, 200));
+  updateMovementStatus('Commutation complete', 'ready');
+  showLiveData(true);
+}
+
+
+async function commutationStepByStep(axis = 2) {
+  
+  // Check serial connection
+  if (!serialPort) {
+    updateMovementStatus('Error: No connection to device', 'error');
+    return false;
+  }
+
+  const result = await Swal.fire({
+    title: 'Perform Commutation',
+    text: `Are you sure you want to perform commutation?`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes',
+    cancelButtonText: 'No'
+  });
+  if (!result.isConfirmed) {
+    console.log('Canceled');
+    return;
+  }
+  
+  updateMovementStatus('Performing commutation...', 'running');
+  showLiveData(false);
+  await flushSerialReader();
+  // await new Promise(resolve => setTimeout(resolve, 50));
+  // await readMsg('EO=1;;\r', { skipLock: true });
+
+  await turnOffMotor();
+  await readMsg(`ax${axis}.UM=3;ax${axis}.MO=1;`);   // Stepper mode, enable motor, set torque control
+  await new Promise(resolve => setTimeout(resolve, 500));
   await readMsg(`ax${axis}.TC=1;`);   // Set torque control
   updateMovementStatus('Waiting for commutation to settle...', 'running');
   await new Promise(resolve => setTimeout(resolve, 5000));
@@ -303,8 +364,6 @@ async function commutation(axis = 2) {
   await new Promise(resolve => setTimeout(resolve, 200));
   updateMovementStatus('Commutation complete', 'ready');
   showLiveData(true);
-  
-
 }
 
 /**

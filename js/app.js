@@ -1,5 +1,43 @@
 // Constants and math functions will be available globally after their respective scripts are loaded
 
+// ==================== Theme Toggle ====================
+
+function updateIcon(theme) {
+  const icon = document.getElementById('theme-icon');
+  if (!icon) return;
+  icon.className = theme === 'light' ? 'fa fa-sun-o' : 'fa fa-moon-o';
+}
+
+function updateLynxImage(theme) {
+  const img = document.getElementById('lynxImage');
+  if (!img) return;
+  img.src = theme === 'dark' ? 'images/lynx-night.png' : 'images/lynx-day.png';
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    html.removeAttribute('data-theme');
+    localStorage.setItem('gimbal-theme', 'light');
+    updateIcon('light');
+    updateLynxImage('light');
+  } else {
+    html.setAttribute('data-theme', 'dark');
+    localStorage.setItem('gimbal-theme', 'dark');
+    updateIcon('dark');
+    updateLynxImage('dark');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const savedTheme = localStorage.getItem('gimbal-theme') || 'light';
+  updateIcon(savedTheme);
+  updateLynxImage(savedTheme);
+});
+
+window.toggleTheme = toggleTheme;
+
 // Serial port variables are now managed by serial.js module
 
 let intervalShowLiveData = null;
