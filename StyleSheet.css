@@ -152,6 +152,39 @@ span {
   color: var(--color-text-active);
 }
 
+.movement-panel a.button.in-progress {
+  background-color: var(--color-btn-hover-deep);
+  color: #3276a0;
+  cursor: not-allowed;
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.movement-panel a.button.in-progress::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: var(--progress, 0%);
+  background: #3276a0;
+  border-radius: 0 2px 2px 0;
+  transition: width 0.4s ease;
+}
+
+.movement-panel a.button.in-progress:hover {
+  background-color: var(--color-btn-hover-deep);
+}
+
+[data-theme="dark"] .movement-panel a.button.in-progress {
+  color: #64d7d6;
+}
+
+[data-theme="dark"] .movement-panel a.button.in-progress::after {
+  background: #64d7d6;
+}
+
 .toggle-container {
   display: flex;
   justify-content: space-between;
@@ -269,6 +302,20 @@ span {
 
 .topnav img {
   cursor: pointer;
+}
+
+.glimpse-icon {
+  height: 24px;
+  width: 24px;
+  vertical-align: middle;
+  display: block;
+  /* Light theme: normalize to black → warm sepia → rotate to #344563 */
+  filter: brightness(0) saturate(100%) invert(30%) sepia(100%) hue-rotate(179deg) saturate(180%) brightness(82%);
+}
+
+[data-theme="dark"] .glimpse-icon {
+  /* Dark theme: normalize to black → warm sepia → rotate to #c8d8f0 */
+  filter: brightness(0) saturate(100%) invert(84%) sepia(100%) hue-rotate(155deg) saturate(60%) brightness(96%);
 }
 
 #theme-toggle-btn {
@@ -514,4 +561,42 @@ input[type="text"] {
   background-color: var(--color-input-bg);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
+}
+
+/* ==================== SweetAlert2 Theme Overrides ==================== */
+.swal2-popup {
+  background-color: var(--color-modal-bg) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.swal2-title {
+  color: var(--color-text-primary) !important;
+}
+
+.swal2-html-container {
+  color: var(--color-text-muted) !important;
+}
+
+.swal2-confirm {
+  background-color: var(--color-btn-action) !important;
+  color: #fff !important;
+}
+
+.swal2-confirm:hover {
+  background-color: var(--color-btn-action-hover) !important;
+}
+
+.swal2-cancel {
+  background-color: var(--color-border) !important;
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="dark"] .swal2-cancel {
+  background-color: #2a3a54 !important;
+  color: var(--color-text-active) !important;
+}
+
+.swal2-icon {
+  border-color: var(--color-btn-action) !important;
+  color: var(--color-btn-action) !important;
 }

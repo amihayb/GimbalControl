@@ -1,0 +1,31 @@
+{
+  "name": "Lynx Gimbal Control",
+  "short_name": "GimbalCtrl",
+  "description": "Web-based tool for controlling the Lynx gimbal: movement, installation setup, acceptance tests, and telemetry.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#1a2535",
+  "background_color": "#0e1520",
+  "icons": [
+    {
+      "src": "images/logo-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "images/logo-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/logo-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "lang": "en"
+}

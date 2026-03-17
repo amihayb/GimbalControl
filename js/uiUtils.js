@@ -250,9 +250,9 @@ function MovementControl() {
   });
   document.getElementById('movement-control-button').classList.add('active');
 
-  // Hide the explanation text
+  // Show the explanation text (will be pushed right by margin)
   const explanationTextElement = document.getElementById('explenation_text');
-  explanationTextElement.style.display = 'none';
+  explanationTextElement.style.display = 'block';
 
   // Clear any existing content in plot area
   const plotAreaElement = document.getElementById('plot-area');
@@ -381,6 +381,7 @@ function closeMovementControl() {
     // Restore original layout
     const explanationTextRestore = document.getElementById('explenation_text');
     const plotAreaRestore = document.getElementById('plot-area');
+    explanationTextRestore.style.display = 'block';
     explanationTextRestore.style.marginLeft = '370px'; // Back to original: 350px sidebar + 20px gap
     plotAreaRestore.style.marginLeft = '370px';
   }
@@ -488,9 +489,9 @@ function InstallationSetup() {
     installationButton.classList.add('active');
   }
 
-  // Hide the explanation text
+  // Show the explanation text (will be pushed right by margin)
   const explanationTextElement = document.getElementById('explenation_text');
-  explanationTextElement.style.display = 'none';
+  explanationTextElement.style.display = 'block';
 
   // Clear any existing content in plot area
   const plotAreaElement = document.getElementById('plot-area');
@@ -518,8 +519,8 @@ function InstallationSetup() {
     <div style="margin: 10px 0;">
       <a class="button" onclick="setZeroAngles('tr')">Set Zero TR</a>
       <a class="button" onclick="setZeroAngles('el')">Set Zero EL</a>
-      <a class="button" onclick="commutation(1)">Commutation Traverse</a>
-      <a class="button" onclick="commutation(2)">Commutation Elevation</a>
+      <a class="button" id="btn-commutation-1" onclick="commutation(1)">Commutation Traverse</a>
+      <a class="button" id="btn-commutation-2" onclick="commutation(2)">Commutation Elevation</a>
       <a class="button" onclick="saveElmo()">Save Elmo Settings</a>
     </div>
   `;
@@ -544,6 +545,7 @@ function closeInstallationSetup() {
     // Restore original layout
     const explanationTextRestore = document.getElementById('explenation_text');
     const plotAreaRestore = document.getElementById('plot-area');
+    explanationTextRestore.style.display = 'block';
     explanationTextRestore.style.marginLeft = '370px'; // Back to original: 350px sidebar + 20px gap
     plotAreaRestore.style.marginLeft = '370px';
   }
@@ -564,9 +566,9 @@ function ATP() {
     atpButton.classList.add('active');
   }
 
-  // Hide the explanation text
+  // Show the explanation text (will be pushed right by margin)
   const explanationTextElement = document.getElementById('explenation_text');
-  explanationTextElement.style.display = 'none';
+  explanationTextElement.style.display = 'block';
 
   // Clear any existing content in plot area
   const plotAreaElement = document.getElementById('plot-area');
@@ -592,9 +594,9 @@ function ATP() {
     <hr>
     <h2>Test Procedures</h2>
     <div style="margin: 10px 0;">
-      <a class="button" onclick="runIBIT()">IBIT</a>
-      <a class="button" onclick="runSineTest()">Sine Test</a>
-      <a class="button" onclick="runFrictionTest()">Friction Test</a>
+      <a class="button" id="btn-atp-ibit" onclick="runIBIT()">IBIT</a>
+      <a class="button" id="btn-atp-sine" onclick="runSineTest()">Sine Test</a>
+      <a class="button" id="btn-atp-friction" onclick="runFrictionTest()">Friction Test</a>
     </div>
   `;
 
@@ -618,6 +620,7 @@ function closeATP() {
     // Restore original layout
     const explanationTextRestore = document.getElementById('explenation_text');
     const plotAreaRestore = document.getElementById('plot-area');
+    explanationTextRestore.style.display = 'block';
     explanationTextRestore.style.marginLeft = '370px';
     plotAreaRestore.style.marginLeft = '370px';
   }
@@ -636,6 +639,12 @@ async function runIBIT() {
   if (!motorToggleEl || !motorToggleEl.checked) {
     Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running IBIT', icon: 'warning' });
     return;
+  }
+
+  const ibitBtn = document.getElementById('btn-atp-ibit');
+  if (ibitBtn) {
+    ibitBtn.classList.add('in-progress');
+    ibitBtn.style.setProperty('--progress', '0%');
   }
 
   // Trigger IBIT
@@ -657,12 +666,22 @@ async function runIBIT() {
   while (Date.now() - pollStart < maxWaitMs) {
     await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
 
+    const pct = Math.min(100, Math.round(((Date.now() - pollStart) / maxWaitMs) * 100));
+    if (ibitBtn) ibitBtn.style.setProperty('--progress', `${pct}%`);
+
     const response = await readMsg('R1[51];;\r');
     console.log(response);
     const value = parseInt(response.trim().split(';')[0]);
     console.log(value);
     if (value === 4) { ibitResult = 'success'; break; }
     if (value === 9) { ibitResult = 'failure'; break; }
+  }
+
+  if (ibitBtn) ibitBtn.style.setProperty('--progress', '100%');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  if (ibitBtn) {
+    ibitBtn.classList.remove('in-progress');
+    ibitBtn.style.removeProperty('--progress');
   }
 
   // Stop recording

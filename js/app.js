@@ -31,7 +31,7 @@ function toggleTheme() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  const savedTheme = localStorage.getItem('gimbal-theme') || 'light';
+  const savedTheme = localStorage.getItem('gimbal-theme') || 'dark';
   updateIcon(savedTheme);
   updateLynxImage(savedTheme);
 });

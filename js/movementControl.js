@@ -266,39 +266,52 @@ async function commutation(axis = 2) {
     return;
   }
   
+  const commutationBtn = document.getElementById(`btn-commutation-${axis}`);
+  if (commutationBtn) commutationBtn.classList.add('in-progress');
+
   updateMovementStatus('Performing commutation...', 'running');
   showLiveData(false);
+  await turnOffMotor();
   await flushSerialReader();
   // await new Promise(resolve => setTimeout(resolve, 50));
   // await readMsg('EO=1;;\r', { skipLock: true });
 
-  await turnOffMotor();
-  await readMsg(`ax${axis}.UM=3;ax${axis}.MO=1;`);   // Stepper mode, enable motor, set torque control
-  await new Promise(resolve => setTimeout(resolve, 500));
-  await readMsg(`ax${axis}.TC=2;`);   // Set torque control
-  updateMovementStatus('Waiting for commutation to settle...', 'running');
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  await readMsg(`ax${axis}.SC[1]=80;ax${axis}.SC[2]=2;ax${axis}.SC[3]=6;`);
+  await readMsg(`ax${axis}.ER[2]=0;`);
+  await readMsg(`ax${axis}.CA[10]=1;`);
+  await readMsg(`ax${axis}.MO=1;`);
 
-  let wf40 = 0;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const wf40Raw = await readMsg(`ax${axis}.WF[40];;`);
-    console.log(wf40Raw);
-    const match = wf40Raw.match(/WF\[40\][^-\d]*([-+]?\d+\.?\d*(?:[eE][+-]?\d+)?)/);
-    wf40 = match ? parseFloat(match[1]) : NaN;
-    if (!isNaN(wf40) && wf40 !== 0) break;
-    console.warn(`WF[40] read attempt ${attempt + 1} failed (got: ${wf40Raw}), retrying...`);
+  updateMovementStatus('Waiting for commutation to complete...', 'running');
+  if (commutationBtn) commutationBtn.style.setProperty('--progress', '0%');
+
+  let mf = 0;
+  const maxAttempts = 36;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const pct = Math.round((attempt / maxAttempts) * 100);
+    if (commutationBtn) commutationBtn.style.setProperty('--progress', `${pct}%`);
+
+    const mfRaw = await readMsg(`ax${axis}.MF;;`);
+    console.log(mfRaw);
+    const match = mfRaw.match(/MF[^-\d]*([-+]?\d+\.?\d*(?:[eE][+-]?\d+)?)/);
+    mf = match ? parseFloat(match[1]) : NaN;
+    if (!isNaN(mf) && mf === 128) break;
+    console.warn(`Commutation in progress... attempt ${attempt + 1}: MF=${mf}`);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  await sendMsg(`ax${axis}.MO=0;ax${axis}.UM=5;`); // Disable motor, restore mode
-  if (isNaN(wf40) || wf40 === 0) {
-    updateMovementStatus('Commutation failed: could not read WF[40]', 'error');
-    showLiveData(true);
-    return false;
-  }
-  const newCommutation = (wf40 * 0.09375 + 1024) & 0xfff;
 
-  await sendMsg(`ax${axis}.CA[7]=${newCommutation};`);
-  console.log(`WF[40] = ${wf40}, new CA[7] = ${newCommutation}`);
+  if (commutationBtn) commutationBtn.style.setProperty('--progress', '100%');
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  await readMsg(`ax${axis}.MO=0;`);
+  await readMsg(`ax${axis}.ER[2]=1e7;`);
+
+  if (commutationBtn) {
+    commutationBtn.classList.remove('in-progress');
+    commutationBtn.style.removeProperty('--progress');
+  }
+
+  const ca7Raw = await readMsg(`ax${axis}.CA[7];;`);
+  console.log(`Commutation complete. ${ca7Raw}`);
 
   await new Promise(resolve => setTimeout(resolve, 200));
   updateMovementStatus('Commutation complete', 'ready');
@@ -329,11 +342,11 @@ async function commutationStepByStep(axis = 2) {
   
   updateMovementStatus('Performing commutation...', 'running');
   showLiveData(false);
+  await turnOffMotor();
   await flushSerialReader();
   // await new Promise(resolve => setTimeout(resolve, 50));
   // await readMsg('EO=1;;\r', { skipLock: true });
 
-  await turnOffMotor();
   await readMsg(`ax${axis}.UM=3;ax${axis}.MO=1;`);   // Stepper mode, enable motor, set torque control
   await new Promise(resolve => setTimeout(resolve, 500));
   await readMsg(`ax${axis}.TC=1;`);   // Set torque control
