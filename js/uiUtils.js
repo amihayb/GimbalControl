@@ -627,6 +627,23 @@ function closeATP() {
 }
 
 /**
+ * Open Glimpse telemetry viewer in a new tab
+ */
+function ViewTelemetry() {
+  document.querySelectorAll('.button').forEach(button => {
+    button.classList.remove('active');
+  });
+  const telemetryButton = document.querySelector('a[onclick*="ViewTelemetry"]');
+  if (telemetryButton) telemetryButton.classList.add('active');
+
+  window.open('https://amihayb.github.io/Glimpse/', '_blank');
+
+  if (telemetryButton) {
+    setTimeout(() => telemetryButton.classList.remove('active'), 500);
+  }
+}
+
+/**
  * Run IBIT (Built-In Test) procedure
  */
 async function runIBIT() {
@@ -647,6 +664,9 @@ async function runIBIT() {
     ibitBtn.style.setProperty('--progress', '0%');
   }
 
+  // Set max velocity
+  await readMsg('R1[13]=80; R1[23]=80;');
+
   // Trigger IBIT
   await sendMsg('R1[1]=5\r');
 
@@ -658,7 +678,7 @@ async function runIBIT() {
   if (recordButton) recordButton.style.color = '#dc3545';
 
   // Poll R1[51] until result or timeout (30 seconds)
-  const maxWaitMs = 30000;
+  const maxWaitMs = 12000;
   const pollIntervalMs = 200;
   const pollStart = Date.now();
   let ibitResult = null;
@@ -700,17 +720,163 @@ async function runIBIT() {
 }
 
 /**
- * Placeholder: Run Sine Test
+ * Run Sine Test: move to random angles, run sine scenario, record 10s, return home
  */
-function runSineTest() {
-  Swal.fire({ title: 'Sine Test', text: 'Sine Test is not yet implemented.', icon: 'info' });
+async function runSineTest() {
+  if (!serialPort) {
+    Swal.fire({ title: 'No Connection', text: 'Please connect to the device first', icon: 'error' });
+    return;
+  }
+
+  const motorToggleEl = document.getElementById('motor-toggle');
+  if (!motorToggleEl || !motorToggleEl.checked) {
+    Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running Sine Test', icon: 'warning' });
+    return;
+  }
+
+  const sineBtn = document.getElementById('btn-atp-sine');
+  if (sineBtn) {
+    sineBtn.classList.add('in-progress');
+    sineBtn.style.setProperty('--progress', '0%');
+  }
+
+  // Pick random target angles
+  const randomAngTr = Math.round(Math.random() * (90 - (-190)) + (-190));
+  const randomAngEl = Math.round(Math.random() * (50 - (-10)) + (-10));
+  console.log(`Sine Test: moving to TR=${randomAngTr}°, EL=${randomAngEl}°`);
+
+  // Set max velocity
+  await readMsg('R1[13]=80; R1[23]=80;');
+
+  // Move to random angles and wait for arrival
+  moveToPosition('sine-target', randomAngTr, randomAngEl);
+  await waitForPosition(randomAngTr, randomAngEl);
+
+  // Start sine scenario
+  await sendMsg(`R1[16]=10; R1[17]=40; R1[18]=${randomAngTr}; R1[26]=5; R1[27]=40; R1[28]=${randomAngEl}; R1[1]=13;`);
+
+  // Start recording
+  shouldRecordData = true;
+  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [] };
+  startTime = Date.now();
+  const recordButton = document.getElementById('recordButton');
+  if (recordButton) recordButton.style.color = '#dc3545';
+
+  // Wait 10 seconds while updating progress bar
+  const recordDuration = 15000;
+  const pollInterval = 200;
+  const recordStart = Date.now();
+  while (Date.now() - recordStart < recordDuration) {
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    const pct = Math.min(100, Math.round(((Date.now() - recordStart) / recordDuration) * 100));
+    if (sineBtn) sineBtn.style.setProperty('--progress', `${pct}%`);
+  }
+
+  // Stop recording and save
+  shouldRecordData = false;
+  if (recordButton) recordButton.style.color = '';
+  saveDataToCSV('SineTest');
+
+  // Return home
+  moveToPosition('home', 0, 0);
+
+  if (sineBtn) sineBtn.style.setProperty('--progress', '100%');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  if (sineBtn) {
+    sineBtn.classList.remove('in-progress');
+    sineBtn.style.removeProperty('--progress');
+  }
+
+  Swal.fire({ title: 'Sine Test Complete', text: `Recorded at TR=${randomAngTr}°, EL=${randomAngEl}°`, icon: 'success' });
 }
 
 /**
- * Placeholder: Run Friction Test
+ * Run Friction Test: slow sweep from bottom-left to top-right and back, recording throughout
  */
-function runFrictionTest() {
-  Swal.fire({ title: 'Friction Test', text: 'Friction Test is not yet implemented.', icon: 'info' });
+async function runFrictionTest() {
+  if (!serialPort) {
+    Swal.fire({ title: 'No Connection', text: 'Please connect to the device first', icon: 'error' });
+    return;
+  }
+
+  const motorToggleEl = document.getElementById('motor-toggle');
+  if (!motorToggleEl || !motorToggleEl.checked) {
+    Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running Friction Test', icon: 'warning' });
+    return;
+  }
+
+  const frictionBtn = document.getElementById('btn-atp-friction');
+  if (frictionBtn) {
+    frictionBtn.classList.add('in-progress');
+    frictionBtn.style.setProperty('--progress', '0%');
+  }
+
+  // Move to bottom-left at high speed and wait for arrival
+  await readMsg('R1[13]=80; R1[23]=80;');
+  moveToPosition('bottomLeft', PREDEFINED_POSITIONS.bottomLeft.tr, PREDEFINED_POSITIONS.bottomLeft.el);
+  await waitForPosition(PREDEFINED_POSITIONS.bottomLeft.tr, PREDEFINED_POSITIONS.bottomLeft.el);
+
+  // Set slow velocity for the sweep
+  await readMsg('R1[13]=10; R1[23]=10;');
+
+  // Start recording
+  shouldRecordData = true;
+  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [] };
+  startTime = Date.now();
+  const recordButton = document.getElementById('recordButton');
+  if (recordButton) recordButton.style.color = '#dc3545';
+
+  // Sweep to top-right (leg 1: ~45s at 10 deg/s over 400 deg TR)
+  // Leg 1: sweep to top-right, progress bar 0→50%
+  const trStart1 = PREDEFINED_POSITIONS.bottomLeft.tr, elStart1 = PREDEFINED_POSITIONS.bottomLeft.el;
+  const trEnd1   = PREDEFINED_POSITIONS.topRight.tr,   elEnd1   = PREDEFINED_POSITIONS.topRight.el;
+  const dist1 = Math.max(Math.abs(trEnd1 - trStart1), Math.abs(elEnd1 - elStart1));
+  moveToPosition('topRight', trEnd1, elEnd1);
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const curTr = parseFloat(document.getElementById('PositionInputTR')?.value);
+    const curEl = parseFloat(document.getElementById('PositionInputEL')?.value);
+    if (!isNaN(curTr) && !isNaN(curEl)) {
+      const remaining = Math.max(Math.abs(trEnd1 - curTr), Math.abs(elEnd1 - curEl));
+      const pct = Math.min(50, Math.round((1 - remaining / dist1) * 50));
+      if (frictionBtn) frictionBtn.style.setProperty('--progress', `${pct}%`);
+      if (remaining <= 0.2) break;
+    }
+  }
+
+  // Leg 2: sweep back to bottom-left, progress bar 50→100%
+  const trEnd2 = PREDEFINED_POSITIONS.bottomLeft.tr, elEnd2 = PREDEFINED_POSITIONS.bottomLeft.el;
+  const dist2 = Math.max(Math.abs(trEnd2 - trEnd1), Math.abs(elEnd2 - elEnd1));
+  moveToPosition('bottomLeft', trEnd2, elEnd2);
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const curTr = parseFloat(document.getElementById('PositionInputTR')?.value);
+    const curEl = parseFloat(document.getElementById('PositionInputEL')?.value);
+    if (!isNaN(curTr) && !isNaN(curEl)) {
+      const remaining = Math.max(Math.abs(trEnd2 - curTr), Math.abs(elEnd2 - curEl));
+      const pct = Math.min(100, 50 + Math.round((1 - remaining / dist2) * 50));
+      if (frictionBtn) frictionBtn.style.setProperty('--progress', `${pct}%`);
+      if (remaining <= 0.2) break;
+    }
+  }
+
+  // Stop recording and save
+  shouldRecordData = false;
+  if (recordButton) recordButton.style.color = '';
+  saveDataToCSV('FrictionTest');
+
+  // Restore high velocity and return home
+  await readMsg('R1[13]=80; R1[23]=80;');
+  moveToPosition('home', 0, 0);
+
+  if (frictionBtn) frictionBtn.style.setProperty('--progress', '100%');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  if (frictionBtn) {
+    frictionBtn.classList.remove('in-progress');
+    frictionBtn.style.removeProperty('--progress');
+  }
+
+  Swal.fire({ title: 'Friction Test Complete', text: 'Data saved to CSV.', icon: 'success' });
 }
 
 // ==================== Input Value Functions ====================
@@ -721,6 +887,33 @@ function runFrictionTest() {
  * @param {string|number} valueString - Value to set (will be converted to number)
  * @param {number} factor - Scaling factor (default: 10)
  */
+
+/**
+ * Poll until the gimbal reaches the target position within tolerance, or timeout.
+ * Reads live position from PositionInputTR / PositionInputEL (already in degrees).
+ * @param {number} targetTr - Target traverse angle [deg]
+ * @param {number} targetEl - Target elevation angle [deg]
+ * @param {number} tolerance - Acceptable error [deg] (default 0.2)
+ * @param {number} timeoutMs - Max wait time in ms (default 30000)
+ */
+async function waitForPosition(targetTr, targetEl, tolerance = 0.2, timeoutMs = 30000) {
+  const pollInterval = 200;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    const currentTr = parseFloat(document.getElementById('PositionInputTR')?.value);
+    const currentEl = parseFloat(document.getElementById('PositionInputEL')?.value);
+    if (!isNaN(currentTr) && !isNaN(currentEl) &&
+        Math.abs(currentTr - targetTr) <= tolerance &&
+        Math.abs(currentEl - targetEl) <= tolerance) {
+      console.log(`Reached target TR=${targetTr}°, EL=${targetEl}°`);
+      return true;
+    }
+  }
+  console.warn(`Timeout waiting for TR=${targetTr}°, EL=${targetEl}°`);
+  return false;
+}
+
 async function updateInputValue(inputId, valueString, factor = 10, decimalPlaces = 1) {
   // Convert the valueString to a number
   const number = parseFloat(valueString);
@@ -759,6 +952,7 @@ window.InstallationSetup = InstallationSetup;
 window.closeInstallationSetup = closeInstallationSetup;
 window.ATP = ATP;
 window.closeATP = closeATP;
+window.ViewTelemetry = ViewTelemetry;
 window.runIBIT = runIBIT;
 window.runSineTest = runSineTest;
 window.runFrictionTest = runFrictionTest;

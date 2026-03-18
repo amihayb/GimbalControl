@@ -6,6 +6,14 @@
 
 // ==================== Movement Control Business Logic ====================
 
+let currentVelocity = 20;
+
+function setMovementVelocity(v) {
+  currentVelocity = v;
+  const el = document.getElementById('movementVelocity');
+  if (el) el.value = v;
+}
+
 // ==================== Validation Functions ====================
 
 /**
@@ -62,9 +70,15 @@ function sendToAngles() {
  * @param {number} el - Elevation angle
  */
 function moveToPosition(position, tr, el) {
-  document.getElementById('trAngle').value = tr;
-  document.getElementById('elAngle').value = el;
-  sendToAngles();
+  // Update UI inputs if they exist (movement panel may not be open)
+  const trInput = document.getElementById('trAngle');
+  const elInput = document.getElementById('elAngle');
+  if (trInput) trInput.value = tr;
+  if (elInput) elInput.value = el;
+
+  const velocity = parseFloat(document.getElementById('movementVelocity')?.value) || currentVelocity;
+  const velCmd = Math.floor(velocity * deg2ticks);
+  sendMsg(`R1[1]=1; SP=${velCmd}; R1[11]=${tr}; R1[21]=${el};`);
   updateMovementStatus(`Moving to ${position} position`, 'moving');
 }
 
@@ -458,6 +472,7 @@ function updateMovementStatus(message, type) {
 window.validateMovementPrerequisites = validateMovementPrerequisites;
 window.sendToAngles = sendToAngles;
 window.moveToPosition = moveToPosition;
+window.setMovementVelocity = setMovementVelocity;
 window.runScenario = runScenario;
 window.startSineMove = startSineMove;
 window.startLinearMove = startLinearMove;
