@@ -87,30 +87,34 @@ function runScenario(scenario) {
       break;
     case 'demo1':
       updateMovementStatus('Running demo 1 scenario...', 'running');
-      sendMsg('R1[13]=1; R1[14]=100; R1[15]=90; R1[23]=5; R1[24]=30; R1[25]=10; R1[1]=13;');
+      sendMsg('R1[16]=2; R1[17]=100; R1[18]=90; R1[26]=5; R1[27]=30; R1[28]=10; R1[1]=13;');
       console.log('Running demo 1 scenario');
       break;
     case 'demo2':
-      if (intervalMove) {
-        clearInterval(intervalMove);
-        intervalMove = null;
-        console.log("Stopped sending commands");
-        updateMovementStatus('Demo 2 stopped', 'ready');
-      } else {
-        console.log("Start sending commands");
-        updateMovementStatus('Running Demo 2 - jumping back and forth...', 'running');
-        intervalMove = setInterval(() => {
-          let message;
-          if (changeDir) {
-            message = 'R1[11]=195; R1[21]=55;';
-          } else {
-            message = 'R1[11]=200; R1[21]=60;';
-          }
-          sendMsg(message);
-          changeDir = !changeDir;
-        }, 1000);
-      }
+      updateMovementStatus('Running demo 1 scenario...', 'running');
+      sendMsg('R1[16]=20; R1[17]=30; R1[18]=-30; R1[26]=10; R1[27]=30; R1[28]=30; R1[1]=13;');
+      console.log('Running demo 2 scenario');
       break;
+      // if (intervalMove) {
+      //   clearInterval(intervalMove);
+      //   intervalMove = null;
+      //   console.log("Stopped sending commands");
+      //   updateMovementStatus('Demo 2 stopped', 'ready');
+      // } else {
+      //   console.log("Start sending commands");
+      //   updateMovementStatus('Running Demo 2 - jumping back and forth...', 'running');
+      //   intervalMove = setInterval(() => {
+      //     let message;
+      //     if (changeDir) {
+      //       message = 'R1[11]=195; R1[21]=55;';
+      //     } else {
+      //       message = 'R1[11]=200; R1[21]=60;';
+      //     }
+      //     sendMsg(message);
+      //     changeDir = !changeDir;
+      //   }, 1000);
+      // }
+      // break;
   }
 }
 
