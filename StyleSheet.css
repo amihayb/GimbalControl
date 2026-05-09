@@ -362,9 +362,9 @@ span {
 
 .connection-stop-sign {
   display: none;
-  height: 36px;
-  width: 36px;
-  padding: 7px 10px;
+  height: 144px;
+  width: 144px;
+  padding: 0;
   pointer-events: none;
 }
 
@@ -372,6 +372,17 @@ span {
   display: block;
   pointer-events: auto;
   cursor: pointer;
+}
+
+#drop-zone {
+  position: relative;
+}
+
+#drop-zone .connection-stop-sign {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  z-index: 6;
 }
 
 .sidenav {

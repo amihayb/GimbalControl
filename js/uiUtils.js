@@ -672,7 +672,7 @@ async function runIBIT() {
 
   // Start recording
   shouldRecordData = true;
-  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [] };
+  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [], Tr_cmd_angle: [], El_cmd_angle: [], status: [] };
   startTime = Date.now();
   const recordButton = document.getElementById('recordButton');
   if (recordButton) recordButton.style.color = '#dc3545';
@@ -757,7 +757,7 @@ async function runSineTest() {
 
   // Start recording
   shouldRecordData = true;
-  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [] };
+  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [], Tr_cmd_angle: [], El_cmd_angle: [], status: [] };
   startTime = Date.now();
   const recordButton = document.getElementById('recordButton');
   if (recordButton) recordButton.style.color = '#dc3545';
@@ -821,7 +821,7 @@ async function runFrictionTest() {
 
   // Start recording
   shouldRecordData = true;
-  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [] };
+  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [], Tr_cmd_angle: [], El_cmd_angle: [], status: [] };
   startTime = Date.now();
   const recordButton = document.getElementById('recordButton');
   if (recordButton) recordButton.style.color = '#dc3545';
@@ -933,6 +933,49 @@ async function updateInputValue(inputId, valueString, factor = 10, decimalPlaces
   }
 }
 
+// ==================== Error Bits Display ====================
+
+const ERROR_BIT_NAMES = {
+  0:  'Software error',
+  1:  'Motor TR error',
+  2:  'Motor EL error',
+  3:  'Motor TR Off in spite of command',
+  4:  'Motor EL Off in spite of command',
+  5:  'No movement TR (motor on, cmd sent)',
+  6:  'No movement EL (motor on, cmd sent)',
+  7:  'TR position error > 1°',
+  8:  'EL position error > 1°',
+  9:  'Input message timeout',
+  10: 'Input message checksum error',
+};
+
+/**
+ * Update the error bits display from R1[9]
+ * Each bit being 1 means an error; 0 means OK.
+ * @param {number|null} errBits - UINT32 value from R1[9]
+ */
+function updateErrorBits(errBits) {
+  const el = document.getElementById('errorBitsDisplay');
+  if (!el) return;
+  if (errBits === null || errBits === undefined || isNaN(errBits)) {
+    el.textContent = '';
+    return;
+  }
+  const bits = errBits >>> 0; // treat as UINT32
+  if (bits === 0) {
+    el.innerHTML = '<span style="color:#28a745;">OK</span>';
+  } else {
+    let html = '';
+    for (let b = 0; b < 32; b++) {
+      if (bits & (1 << b)) {
+        const name = ERROR_BIT_NAMES[b] || `Bit ${b}`;
+        html += `<div style="color:#dc3545;">• [${b}] ${name}</div>`;
+      }
+    }
+    el.innerHTML = html;
+  }
+}
+
 // ==================== Exported Functions ====================
 
 // Make functions available globally
@@ -957,3 +1000,4 @@ window.runIBIT = runIBIT;
 window.runSineTest = runSineTest;
 window.runFrictionTest = runFrictionTest;
 window.updateInputValue = updateInputValue;
+window.updateErrorBits = updateErrorBits;

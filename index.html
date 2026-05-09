@@ -60,7 +60,6 @@
     <a id="glimpseButton" href="https://amihayb.github.io/Glimpse/" target="_blank" rel="noopener noreferrer" title="Open Glimpse"><img src="images/glimpse-bw-icon.svg" alt="Open Glimpse" class="glimpse-icon"></a>
     <button id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode"><i class="fa fa-moon-o" id="theme-icon"></i></button>
     <a onclick="about()" title="About"><i class="fa fa-info-circle"></i></a>
-    <img id="emergency-stop" class="connection-stop-sign" src="images/StopSign.svg" alt="Connected" title="EMERGENCY STOP!" onclick="stopSignClick()">
     <img onclick="about()" height="36" src="images/logo-title.svg" alt="Blau Robotics" id="LogoBlau">
   </div>
   <div class="sidenav" id="sidenav">
@@ -82,6 +81,10 @@
     <div class="target-control" title="System operating mode">
       <label for="systemModeInput">System Mode</label>
       <input type="text" id="systemModeInput" value="0" />
+    </div><br>
+    <div class="target-control" title="R1[9] error bit flags (0=OK, 1=error)">
+      <label>Error Bits</label>
+      <div id="errorBitsDisplay" style="font-size: 12px; text-align: center;"></div>
     </div><br>
     <div class="target-control" title="Motor status indicators">
       <table class="parameter-table">
@@ -132,6 +135,7 @@
   </div>
   <div id="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
     ondragleave="handleDragLeave(event)">
+    <img id="emergency-stop" class="connection-stop-sign" src="images/StopSign.svg" alt="Connected" title="EMERGENCY STOP!" onclick="stopSignClick()">
     <div id="explenation_text">
       Drag & Drop CSV File Here
       <br>

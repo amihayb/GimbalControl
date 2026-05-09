@@ -9,6 +9,10 @@ let serialPort;
 let writer;
 let reader;
 
+// Set to true to use the 3-register packed decoding method (R1[51]/R1[52]/R1[53]),
+// or false to use the original 7-register method (R1[10]/R1[31]/R1[41]/...).
+const USE_PACKED_REGISTERS = false;
+
 // Semaphore to pause live data polling during manual serial operations
 let serialLockDepth = 0;
 let liveDataPauseRequested = false;
@@ -289,6 +293,44 @@ function extractKeysFromCommand(message) {
 const getValue = (pairs, key) =>
   pairs.find(([k]) => String(k) === String(key))?.[1] ?? null;
 
+/**
+ * Sign-extend a value from a given bit width to a full 32-bit signed integer.
+ * @param {number} value - The raw unsigned value
+ * @param {number} bits  - The number of bits it was extracted from
+ * @returns {number} Signed integer
+ */
+function signExtend(value, bits) {
+  const shift = 32 - bits;
+  return (value << shift) >> shift;
+}
+
+/**
+ * Decode three packed 32-bit registers (R1[51], R1[52], R1[53]) into individual gimbal fields.
+ * @param {number} R1 - First packed register
+ * @param {number} R2 - Second packed register
+ * @param {number} R3 - Third packed register
+ * @returns {{ posTr, posEl, posCmdTr, posCmdEl, rateTr, rateEl, status, curTr, curEl }}
+ */
+function decodeRegisters(R1, R2, R3) {
+  R1 = R1 | 0;
+  R2 = R2 | 0;
+  R3 = R3 | 0;
+
+  const posTr    = signExtend((R1 >>> 20) & 0xFFF, 12);
+  const posEl    = signExtend((R1 >>>  8) & 0xFFF, 12);
+  const status   =            (R1 >>>  0) & 0xFF;
+
+  const posCmdTr = signExtend((R2 >>> 20) & 0xFFF, 12);
+  const posCmdEl = signExtend((R2 >>>  8) & 0xFFF, 12);
+  const curTr    =            (R2 >>>  0) & 0xFF;
+
+  const rateTr   = signExtend((R3 >>> 22) & 0x3FF, 10);
+  const rateEl   = signExtend((R3 >>> 12) & 0x3FF, 10);
+  const curEl    =            (R3 >>>  4) & 0xFF;
+
+  return { posTr, posEl, posCmdTr, posCmdEl, rateTr, rateEl, status, curTr, curEl };
+}
+
 async function saveElmo() {
   
   // Check serial connection
@@ -336,11 +378,11 @@ async function showLiveData(state) {
       clearInterval(intervalShowLiveData);
       intervalShowLiveData = null;
       prevAngle = null;
-      await sendMsg('eo=1;'); // Turn off echo
+      await sendMsg('eo=1;'); // Turn on echo
       console.log("Stopped show live data interval");
   } else if (state)  {
       console.log("Start show live data interval");
-      await sendMsg('eo=0;'); // Turn on echo
+      await sendMsg('eo=0;'); // Turn off echo
       intervalShowLiveData = setInterval(() => {
         updateLiveData();
       }, 20); // ms
@@ -359,9 +401,10 @@ async function updateLiveData() {
   // let readTime = Date.now();
   let tRead;
   try {
-    tRead = await readMsg('R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];;\r', { 
-      skipLock: true
-    });
+    const readCommand = USE_PACKED_REGISTERS
+      ? 'R1[51];R1[52];R1[53];;\r'
+      : 'R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];;\r';
+    tRead = await readMsg(readCommand, { skipLock: true });
     // let endTime = Date.now();
     // console.log(`Time taken: ${endTime - readTime}ms`);
   } finally {
@@ -385,39 +428,75 @@ async function updateLiveData() {
   // let curTr = getValue(pairs, 34);
   // let curEl = getValue(pairs, 44);
   
-  // Parse semicolon-delimited values
-  const values = tRead.split(';').map(val => {
-    const trimmed = val.trim();
-    if (trimmed === '') return null;
-    const num = Number(trimmed);
-    return isNaN(num) ? trimmed : num;
-  });
-  
-  // Extract values by index (example: 0;-1226;461;-1;-2;-1;-1;;;;)
-  const sysMode = values[0] ?? null;
-  const posTr = values[1] ?? null;
-  const posEl = values[2] ?? null;
-  const velTr = values[3] ?? null;
-  const velEl = values[4] ?? null;
-  const curTr = values[5] ?? null;
-  const curEl = values[6] ?? null;
+  let sysMode = null;
+  let errBits = null;
+  let posTr, posEl, velTr, velEl, curTr, curEl;
+  let posCmdTr = null, posCmdEl = null, status = null;
 
-  // Only update UI if all values are valid numbers and 100ms have passed since last update
-  const allValuesValid = [sysMode, posTr, posEl, velTr, velEl, curTr, curEl].every(val => 
-    val !== null && typeof val === 'number' && !isNaN(val)
-  );
+  if (USE_PACKED_REGISTERS) {
+    const parts = tRead.split(';').map(Number);
+    if (parts.length < 3 || parts.slice(0, 3).some(isNaN)) {
+      return; // bad read — skip UI update and CSV recording
+    }
+    const decoded = decodeRegisters(parts[0], parts[1], parts[2]);
+    posTr    = decoded.posTr;
+    posEl    = decoded.posEl;
+    velTr    = decoded.rateTr;
+    velEl    = decoded.rateEl;
+    curTr    = decoded.curTr;
+    curEl    = decoded.curEl;
+    posCmdTr = decoded.posCmdTr;
+    posCmdEl = decoded.posCmdEl;
+    status   = decoded.status;
+  } else {
+    // Parse semicolon-delimited values.
+    // R1[125] always returns 255 and is used as an alignment sentinel.
+    // Search for 255 to handle stale leading bytes from a previous response.
+    const values = tRead.split(';').map(val => {
+      const trimmed = val.trim();
+      if (trimmed === '') return null;
+      const num = Number(trimmed);
+      return isNaN(num) ? trimmed : num;
+    });
+    const i = values.indexOf(255);
+    if (i === -1) {
+      console.warn('updateLiveData: alignment sentinel (255) not found — discarding frame');
+      return;
+    }
+    if (i > 0) {
+      console.warn(`updateLiveData: realigned by ${i} position(s)`);
+    }
+    sysMode = values[i + 1] ?? null;
+    posTr   = values[i + 2] ?? null;
+    posEl   = values[i + 3] ?? null;
+    velTr   = values[i + 4] ?? null;
+    velEl   = values[i + 5] ?? null;
+    curTr   = values[i + 6] ?? null;
+    curEl   = values[i + 7] ?? null;
+    errBits = values[i + 8] ?? null;
+  }
+
+  // Only update UI if core values are valid numbers and 100ms have passed since last update
+  const coreValues = [posTr, posEl, velTr, velEl, curTr, curEl];
+  const isValid = val => val !== null && val !== undefined && typeof val === 'number' && !isNaN(val);
+  const allValuesValid = USE_PACKED_REGISTERS
+    ? coreValues.every(isValid)
+    : [...coreValues, sysMode].every(isValid);
   
   const now = Date.now();
   const timeSinceLastUIUpdate = Date.now() - lastUIUpdateTime;
   
   if (allValuesValid && timeSinceLastUIUpdate >= 100) {
-    updateInputValue('systemModeInput', sysMode, 1);
+    if (!USE_PACKED_REGISTERS) {
+      updateInputValue('systemModeInput', sysMode, 1);
+    }
     updateInputValue('PositionInputTR', posTr);
     updateInputValue('PositionInputEL', posEl);
     updateInputValue('VelocityInputTR', velTr,10,0);
     updateInputValue('VelocityInputEL', velEl,10,0);
     updateInputValue('CurrentInputTR', curTr,1000,1);
     updateInputValue('CurrentInputEL', curEl,1000,1);
+    updateErrorBits(errBits);
     lastUIUpdateTime = now;
   } else if (!allValuesValid) {
     console.log('Skipping UI update - not all values are valid numbers:', { sysMode, posTr, posEl, velTr, velEl, curTr, curEl });
@@ -430,7 +509,10 @@ async function updateLiveData() {
     rows.Tr_current.push(curTr); 
     rows.El_angle.push(posEl);
     rows.El_velocity.push(velEl);
-    rows.El_current.push(curEl); 
+    rows.El_current.push(curEl);
+    rows.Tr_cmd_angle.push(posCmdTr);
+    rows.El_cmd_angle.push(posCmdEl);
+    rows.status.push(USE_PACKED_REGISTERS ? status : errBits);
     rows.time.push(Date.now() - startTime); // Time in milliseconds
   }
 }

@@ -70,6 +70,9 @@ let rows = {
   El_angle: [],
   El_velocity: [],
   El_current: [],
+  Tr_cmd_angle: [],
+  El_cmd_angle: [],
+  status: [],
 };
 
 
@@ -401,6 +404,9 @@ function recordData() {
       El_angle: [],
       El_velocity: [],
       El_current: [],
+      Tr_cmd_angle: [],
+      El_cmd_angle: [],
+      status: [],
     };
     
     // Set start time to now

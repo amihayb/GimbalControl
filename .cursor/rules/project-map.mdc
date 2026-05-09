@@ -1,0 +1,22 @@
+---
+description: Read the project map before starting any task in this repo.
+alwaysApply: true
+---
+
+# Project Map — Read First
+
+Before making any changes, read `PROJECT_MAP.md` in the project root.
+
+It contains:
+- What this project is and how it works
+- Full file structure with the purpose of every file
+- The global `window.Nextscope` namespace and which module owns what
+- Data flow from file/serial input to the Plotly chart
+- Conventions you must follow (no bundler, IIFE pattern, script load order, SweetAlert2, localStorage keys, CSS variables, `sw.js` cache version)
+- Hardware context (NextPower telemetry column names)
+
+Do not skip this step. The project has non-obvious conventions (no ES modules, shared global namespace, specific script load order) that will cause bugs if ignored.
+
+## Updating the Map
+After any major change (new file, new struct, refactor, new convention),
+update PROJECT_MAP.md before closing the task.

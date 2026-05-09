@@ -182,14 +182,17 @@ function formatTimestamp() {
  * @param {string} prefix - Filename prefix (default: 'lynx')
  */
 function saveDataToCSV(prefix = 'lynx') {
-  let csvContent = "Time_s,Tr_Angle_deg,Tr_Velocity_deg/s,Tr_Current_A,El_Angle_deg,El_Velocity_deg/s,El_Current_A\n";
+  let csvContent = "Time_s,Tr_Angle_deg,Tr_Velocity_deg/s,Tr_Current_A,El_Angle_deg,El_Velocity_deg/s,El_Current_A,Status\n";
   
   for (let i = 0; i < rows.time.length; i++) {
     const safeFormat = (value) => {
       return (value !== null && value !== undefined && !isNaN(value)) ? value.toFixed(3) : '';
     };
+    const safeInt = (value) => {
+      return (value !== null && value !== undefined && !isNaN(value)) ? String(value) : '';
+    };
     
-    csvContent += `${rows.time[i]/1000 || 0},${safeFormat(rows.Tr_angle[i])},${safeFormat(rows.Tr_velocity[i])},${safeFormat(rows.Tr_current[i])},${safeFormat(rows.El_angle[i])},${safeFormat(rows.El_velocity[i])},${safeFormat(rows.El_current[i])}\n`;
+    csvContent += `${rows.time[i]/1000 || 0},${safeFormat(rows.Tr_angle[i])},${safeFormat(rows.Tr_velocity[i])},${safeFormat(rows.Tr_current[i])},${safeFormat(rows.El_angle[i])},${safeFormat(rows.El_velocity[i])},${safeFormat(rows.El_current[i])},${safeInt(rows.status[i])}\n`;
   }
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
