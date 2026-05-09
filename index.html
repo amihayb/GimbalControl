@@ -78,6 +78,7 @@
         <span class="toggle-slider"></span>
       </label>
     </div><br>
+    <img id="emergency-stop" class="connection-stop-sign" src="images/StopSign.svg" alt="Connected" title="EMERGENCY STOP!" onclick="stopSignClick()">
     <div class="target-control" title="System operating mode">
       <label for="systemModeInput">System Mode</label>
       <input type="text" id="systemModeInput" value="0" />
@@ -135,7 +136,6 @@
   </div>
   <div id="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
     ondragleave="handleDragLeave(event)">
-    <img id="emergency-stop" class="connection-stop-sign" src="images/StopSign.svg" alt="Connected" title="EMERGENCY STOP!" onclick="stopSignClick()">
     <div id="explenation_text">
       Drag & Drop CSV File Here
       <br>
@@ -154,8 +154,9 @@
         <p>Good luck and happy testing!</p>
       </div>
     </div>
-    <table id="resultsTable"></table>
+    <div id="resultsTable" class="plot-area"></div>
     <div class="plot-area" id="plot-area">
+      <div id="plot"></div>
     </div>
   </div>
   <audio id="localAudio" preload="auto">
@@ -170,6 +171,7 @@
   <script src="js/plotting.js"></script>
   <script src="js/movementControl.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/blauplot-bundle.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

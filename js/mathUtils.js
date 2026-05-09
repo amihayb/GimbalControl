@@ -224,6 +224,13 @@ const minPositive = arr => {
 const maxAbs = (arr) => Math.max(...arr.map(Math.abs));
 
 /**
+ * Find minimum absolute value in array
+ * @param {Array} arr - Input array
+ * @returns {number} Minimum absolute value
+ */
+const minAbs = (arr) => Math.min(...arr.map(Math.abs));
+
+/**
  * Find maximum negative value in array
  * @param {Array} arr - Input array
  * @returns {number} Maximum negative value or minimum value if no negatives
@@ -270,6 +277,63 @@ const lastVal = (arr) => (parseFloat(arr.slice(-1)[0]) * r2d);
  */
 const findFirstChangeIndex = data => data.findIndex((value, index) => index > 0 && value !== data[index - 1]);
 
+
+// ==================== Median Filter (window = 3) ====================
+
+/**
+ * Apply a window-3 median filter to an array.
+ * Edge samples (first and last) are passed through unchanged.
+ * @param {Array} arr - Input numeric array
+ * @returns {Array} Filtered array (new copy)
+ */
+function medianFilter3(arr) {
+  if (!arr || arr.length < 3) return arr.slice();
+  const out = new Array(arr.length);
+  out[0] = arr[0];
+  out[arr.length - 1] = arr[arr.length - 1];
+  for (let i = 1; i < arr.length - 1; i++) {
+    const vals = [arr[i - 1], arr[i], arr[i + 1]];
+    vals.sort((a, b) => a - b);
+    out[i] = vals[1];
+  }
+  return out;
+}
+
+/**
+ * Apply signal processing to a COPY of a rows object.
+ * Scales and median-filters all data channels; the original is not modified.
+ *   time        : ms  → s   (× 0.001)
+ *   angle       :        × 0.1
+ *   velocity    :        × 0.1
+ *   current     :        × 0.001
+ * Then applies a window-3 median filter to every data channel.
+ * 'status' is left untouched.
+ * @param {Object} rowsData - The recorded rows object
+ * @returns {Object} New processed rows object
+ */
+function applySignalProcessing(rowsData) {
+  const p = {};
+  for (const key of Object.keys(rowsData)) {
+    p[key] = rowsData[key].slice();
+  }
+
+  if (p.time)        p.time        = p.time.map(t => t * 0.001);
+
+  const angleKeys = ['Tr_angle', 'El_angle', 'Tr_cmd_angle', 'El_cmd_angle'];
+  const velKeys   = ['Tr_velocity', 'El_velocity'];
+  const currKeys  = ['Tr_current', 'El_current'];
+
+  for (const k of angleKeys) if (p[k]) p[k] = p[k].map(v => v * 0.1);
+  for (const k of velKeys)   if (p[k]) p[k] = p[k].map(v => v * 0.1);
+  for (const k of currKeys)  if (p[k]) p[k] = p[k].map(v => v * 0.001);
+
+  const filterKeys = [...angleKeys, ...velKeys, ...currKeys];
+  for (const k of filterKeys) {
+    if (p[k] && p[k].length >= 3) p[k] = medianFilter3(p[k]);
+  }
+
+  return p;
+}
 
 // ==================== Median Filter for 5 elements====================
 function median5(a, b, c, d, e) {
@@ -355,6 +419,7 @@ window.mean = mean;
 window.derivative = derivative;
 window.minPositive = minPositive;
 window.maxAbs = maxAbs;
+window.minAbs = minAbs;
 window.maxNegative = maxNegative;
 window.min = min;
 window.max = max;
@@ -362,6 +427,8 @@ window.strClean = strClean;
 window.lastVal = lastVal;
 window.findFirstChangeIndex = findFirstChangeIndex;
 window.createStreamingMedian5 = createStreamingMedian5;
+window.medianFilter3 = medianFilter3;
+window.applySignalProcessing = applySignalProcessing;
 window.getIdx = getIdx;
 window.minIdx = minIdx;
 window.maxIdx = maxIdx;

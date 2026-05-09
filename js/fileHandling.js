@@ -178,6 +178,17 @@ function formatTimestamp() {
 }
 
 /**
+ * Apply signal processing in place to the global rows object.
+ * Scales time → seconds, angles/velocities × 0.1, currents × 0.001,
+ * then applies a window-3 median filter to all data channels.
+ * Call this once after recording stops, before saving or plotting.
+ */
+function applySignalProcessingToRows() {
+  const p = applySignalProcessing(rows);
+  Object.keys(p).forEach(k => { rows[k] = p[k]; });
+}
+
+/**
  * Save recorded data to CSV file with timestamp
  * @param {string} prefix - Filename prefix (default: 'lynx')
  */
@@ -192,7 +203,7 @@ function saveDataToCSV(prefix = 'lynx') {
       return (value !== null && value !== undefined && !isNaN(value)) ? String(value) : '';
     };
     
-    csvContent += `${rows.time[i]/1000 || 0},${safeFormat(rows.Tr_angle[i])},${safeFormat(rows.Tr_velocity[i])},${safeFormat(rows.Tr_current[i])},${safeFormat(rows.El_angle[i])},${safeFormat(rows.El_velocity[i])},${safeFormat(rows.El_current[i])},${safeInt(rows.status[i])}\n`;
+    csvContent += `${rows.time[i].toFixed(3)},${safeFormat(rows.Tr_angle[i])},${safeFormat(rows.Tr_velocity[i])},${safeFormat(rows.Tr_current[i])},${safeFormat(rows.El_angle[i])},${safeFormat(rows.El_velocity[i])},${safeFormat(rows.El_current[i])},${safeInt(rows.status[i])}\n`;
   }
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -215,3 +226,4 @@ window.export2csv = export2csv;
 window.exportToCsv = exportToCsv;
 window.formatTimestamp = formatTimestamp;
 window.saveDataToCSV = saveDataToCSV;
+window.applySignalProcessingToRows = applySignalProcessingToRows;

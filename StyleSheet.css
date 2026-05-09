@@ -50,6 +50,10 @@ body {
   color: var(--color-text-primary);
 }
 
+h1 {
+  font-size: 1.5em;
+}
+
 #file-selector {
   position: absolute;
   left: 50%;
@@ -190,7 +194,7 @@ span {
   justify-content: space-between;
   align-items: center;
   padding: 0 15px;
-  margin-bottom: 10px;
+  margin-bottom: 0px;
 }
 
 .toggle-label {
@@ -362,10 +366,11 @@ span {
 
 .connection-stop-sign {
   display: none;
-  height: 144px;
-  width: 144px;
+  height: 108px;
+  width: 108px;
   padding: 0;
   pointer-events: none;
+  margin: 0 auto 10px;
 }
 
 .connection-stop-sign.connected {
@@ -376,13 +381,6 @@ span {
 
 #drop-zone {
   position: relative;
-}
-
-#drop-zone .connection-stop-sign {
-  position: absolute;
-  top: 80px;
-  right: 20px;
-  z-index: 6;
 }
 
 .sidenav {
@@ -488,14 +486,13 @@ td {
 
 /* The results Table */
 #resultsTable {
-  border-collapse: collapse;
-  margin: 0 auto;
   margin-top: 60px;
 }
 
 #resultsTable th, #resultsTable td {
   border: 1px solid var(--color-border);
   padding: 8px;
+  font-size: 12px;
 }
 
 #resultsTable th {

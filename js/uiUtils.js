@@ -23,12 +23,17 @@ function about(){
  * @param {Array} data - Array of objects containing table data
  */
 function drawTable(data) {
-  const table = document.getElementById('resultsTable');
+  const container = document.getElementById('resultsTable');
 
-  if (!table) {
+  if (!container) {
     console.error('Table not found');
     return;
   }
+
+  while (container.firstChild) container.removeChild(container.firstChild);
+
+  const table = document.createElement('table');
+  table.style.borderCollapse = 'collapse';
 
   const thead = document.createElement('thead');
   const tbody = document.createElement('tbody');
@@ -39,7 +44,7 @@ function drawTable(data) {
   headers.forEach(header => {
     const th = document.createElement('th');
     th.textContent = header;
-    th.style.textAlign = 'center';  // Center-align headers
+    th.style.textAlign = 'center';
     headerRow.appendChild(th);
   });
 
@@ -48,19 +53,21 @@ function drawTable(data) {
 
   data.forEach(item => {
     const row = document.createElement('tr');
-    const cells = [item.parameter, item.value1.toFixed(2), item.value2.toFixed(2), item.successCriteria];
+    const cells = [item.parameter, item.value1, item.value2, item.successCriteria];
 
     cells.forEach((cellValue, index) => {
       const td = document.createElement('td');
-      td.textContent = cellValue;
-      td.style.textAlign = 'center';  // Center-align cell values
+      td.textContent = typeof cellValue === 'number' ? cellValue.toFixed(2) : cellValue;
+      td.style.textAlign = 'center';
 
-      if (index > 0 && index < 3) { // Check only for Traverese and Elevation columns
-        if (Math.abs(cellValue) > item.successCriteria) {
-          td.style.color = 'red';
-        } else {
-          td.style.color = 'green';
-        }
+      if (index > 0 && index < 3) {
+        const value = index === 1 ? item.value1 : item.value2;
+        const success = item.successMethod === 'bigger'
+          ? value > item.successCriteria
+          : item.successMethod === 'smaller'
+            ? value < item.successCriteria
+            : Math.abs(value) <= item.successCriteria;
+        td.style.color = success ? 'green' : 'red';
       }
 
       row.appendChild(td);
@@ -70,6 +77,7 @@ function drawTable(data) {
   });
 
   table.appendChild(tbody);
+  container.appendChild(table);
 }
 
 /**
@@ -250,13 +258,7 @@ function MovementControl() {
   });
   document.getElementById('movement-control-button').classList.add('active');
 
-  // Show the explanation text (will be pushed right by margin)
-  const explanationTextElement = document.getElementById('explenation_text');
-  explanationTextElement.style.display = 'block';
-
-  // Clear any existing content in plot area
-  const plotAreaElement = document.getElementById('plot-area');
-  plotAreaElement.innerHTML = '';
+  // Keep existing plot content when opening side panels.
 
   // Remove existing movement control panel if it exists
   const existingPanel = document.getElementById('movement-control-panel');
@@ -366,8 +368,10 @@ function MovementControl() {
   // Adjust main content area to account for extended sidebar
   const explanationTextEl = document.getElementById('explenation_text');
   const plotAreaEl = document.getElementById('plot-area');
+  const resultsTableEl = document.getElementById('resultsTable');
   explanationTextEl.style.marginLeft = '720px'; // 350px (main sidebar) + 350px (movement panel) + 20px gap
   plotAreaEl.style.marginLeft = '720px';
+  resultsTableEl.style.marginLeft = '720px';
 }
 
 /**
@@ -381,9 +385,10 @@ function closeMovementControl() {
     // Restore original layout
     const explanationTextRestore = document.getElementById('explenation_text');
     const plotAreaRestore = document.getElementById('plot-area');
-    explanationTextRestore.style.display = 'block';
+    const resultsTableRestore = document.getElementById('resultsTable');
     explanationTextRestore.style.marginLeft = '370px'; // Back to original: 350px sidebar + 20px gap
     plotAreaRestore.style.marginLeft = '370px';
+    resultsTableRestore.style.marginLeft = '370px';
   }
 }
 
@@ -489,13 +494,7 @@ function InstallationSetup() {
     installationButton.classList.add('active');
   }
 
-  // Show the explanation text (will be pushed right by margin)
-  const explanationTextElement = document.getElementById('explenation_text');
-  explanationTextElement.style.display = 'block';
-
-  // Clear any existing content in plot area
-  const plotAreaElement = document.getElementById('plot-area');
-  plotAreaElement.innerHTML = '';
+  // Keep existing plot content when opening side panels.
 
   // Remove existing installation setup panel if it exists
   const existingPanel = document.getElementById('installation-setup-panel');
@@ -530,8 +529,10 @@ function InstallationSetup() {
   // Adjust main content area to account for extended sidebar
   const explanationTextEl = document.getElementById('explenation_text');
   const plotAreaEl = document.getElementById('plot-area');
+  const resultsTableEl = document.getElementById('resultsTable');
   explanationTextEl.style.marginLeft = '720px'; // 350px (main sidebar) + 350px (installation panel) + 20px gap
   plotAreaEl.style.marginLeft = '720px';
+  resultsTableEl.style.marginLeft = '720px';
 }
 
 /**
@@ -545,9 +546,10 @@ function closeInstallationSetup() {
     // Restore original layout
     const explanationTextRestore = document.getElementById('explenation_text');
     const plotAreaRestore = document.getElementById('plot-area');
-    explanationTextRestore.style.display = 'block';
+    const resultsTableRestore = document.getElementById('resultsTable');
     explanationTextRestore.style.marginLeft = '370px'; // Back to original: 350px sidebar + 20px gap
     plotAreaRestore.style.marginLeft = '370px';
+    resultsTableRestore.style.marginLeft = '370px';
   }
 }
 
@@ -566,13 +568,7 @@ function ATP() {
     atpButton.classList.add('active');
   }
 
-  // Show the explanation text (will be pushed right by margin)
-  const explanationTextElement = document.getElementById('explenation_text');
-  explanationTextElement.style.display = 'block';
-
-  // Clear any existing content in plot area
-  const plotAreaElement = document.getElementById('plot-area');
-  plotAreaElement.innerHTML = '';
+  // Keep existing plot content when opening side panels.
 
   // Remove existing ATP panel if it exists
   const existingPanel = document.getElementById('atp-panel');
@@ -605,8 +601,10 @@ function ATP() {
   // Adjust main content area to account for extended sidebar
   const explanationTextEl = document.getElementById('explenation_text');
   const plotAreaEl = document.getElementById('plot-area');
+  const resultsTableEl = document.getElementById('resultsTable');
   explanationTextEl.style.marginLeft = '720px';
   plotAreaEl.style.marginLeft = '720px';
+  resultsTableEl.style.marginLeft = '720px';
 }
 
 /**
@@ -620,9 +618,10 @@ function closeATP() {
     // Restore original layout
     const explanationTextRestore = document.getElementById('explenation_text');
     const plotAreaRestore = document.getElementById('plot-area');
-    explanationTextRestore.style.display = 'block';
+    const resultsTableRestore = document.getElementById('resultsTable');
     explanationTextRestore.style.marginLeft = '370px';
     plotAreaRestore.style.marginLeft = '370px';
+    resultsTableRestore.style.marginLeft = '370px';
   }
 }
 
@@ -641,6 +640,71 @@ function ViewTelemetry() {
   if (telemetryButton) {
     setTimeout(() => telemetryButton.classList.remove('active'), 500);
   }
+}
+
+/**
+ * Render IBIT results: hide welcome area, clear plot-area, draw 2×2 subplot and pass/fail table.
+ * Called after every IBIT run regardless of outcome.
+ */
+function showIBITResults() {
+  const welcomeEl = document.getElementById('explenation_text');
+  if (welcomeEl) welcomeEl.style.display = 'none';
+
+  const plotArea = document.getElementById('plot-area');
+  while (plotArea.firstChild) plotArea.removeChild(plotArea.firstChild);
+  const plotDiv = document.createElement('div');
+  plotDiv.id = 'plot';
+  plotArea.appendChild(plotDiv);
+
+  const gridOptions = { gridRows: 2, gridCols: 2, pattern: 'independent' };
+  const traces = [
+    BP.buildLine('Tr_angle',    rows, 1, 'time', gridOptions),
+    BP.buildLine('El_angle',    rows, 2, 'time', gridOptions),
+    BP.buildLine('Tr_velocity', rows, 3, 'time', gridOptions),
+    BP.buildLine('El_velocity', rows, 4, 'time', gridOptions),
+  ];
+  const layout = BP.buildLayout(2, 2, { pattern: 'independent', roworder: 'top to bottom' });
+  BP.plot('plot', traces, layout);
+
+  BP.yline('plot',  200, { color: 'green', dash: 'dash', label: 'sector limits',    yref: 'y',  xref: 'x domain',  editable: false });
+  BP.yline('plot', -200, { color: 'green', dash: 'dash',                             yref: 'y',  xref: 'x domain',  editable: false });
+  BP.yline('plot',   60, { color: 'green', dash: 'dash', label: 'sector limits',    yref: 'y2', xref: 'x2 domain', editable: false });
+  BP.yline('plot',  -15, { color: 'green', dash: 'dash',                             yref: 'y2', xref: 'x2 domain', editable: false });
+  BP.yline('plot',   80, { color: 'green', dash: 'dash', label: 'Velocity Command', yref: 'y3', xref: 'x3 domain', editable: false });
+  BP.yline('plot',  -80, { color: 'green', dash: 'dash',                             yref: 'y3', xref: 'x3 domain', editable: false });
+  BP.yline('plot',   80, { color: 'green', dash: 'dash', label: 'Velocity Command', yref: 'y4', xref: 'x4 domain', editable: false });
+  BP.yline('plot',  -80, { color: 'green', dash: 'dash',                             yref: 'y4', xref: 'x4 domain', editable: false });
+
+  BP.drawTable('resultsTable', [
+    {
+      parameter: 'Upper Sector Limits Error',
+      value1: minAbs(plus(rows.Tr_angle, -200)),
+      value2: minAbs(plus(rows.Tr_angle, -60)),
+      successCriteria: 1,
+      successMethod: 'smaller'
+    },
+    {
+      parameter: 'Lower Sector Limits Error',
+      value1: minAbs(plus(rows.Tr_angle, 200)),
+      value2: minAbs(plus(rows.El_angle, 15)),
+      successCriteria: 1,
+      successMethod: 'smaller'
+    },
+    {
+      parameter: 'Right Max Velocity Error',
+      value1: minAbs(plus(rows.Tr_velocity, -80)),
+      value2: minAbs(plus(rows.El_velocity, -80)),
+      successCriteria: 4,
+      successMethod: 'smaller'
+    }
+    {
+      parameter: 'Left Max Velocity Error',
+      value1: minAbs(plus(rows.Tr_velocity, 80)),
+      value2: minAbs(plus(rows.El_velocity, 80)),
+      successCriteria: 4,
+      successMethod: 'smaller'
+    }
+  ]);
 }
 
 /**
@@ -707,6 +771,7 @@ async function runIBIT() {
   // Stop recording
   shouldRecordData = false;
   if (recordButton) recordButton.style.color = '';
+  applySignalProcessingToRows();
   saveDataToCSV('IBIT');
 
   // Show result
@@ -717,6 +782,7 @@ async function runIBIT() {
   } else {
     Swal.fire({ title: 'IBIT Timeout', text: 'IBIT did not complete within 30 seconds', icon: 'warning' });
   }
+  showIBITResults();
 }
 
 /**
@@ -775,6 +841,7 @@ async function runSineTest() {
   // Stop recording and save
   shouldRecordData = false;
   if (recordButton) recordButton.style.color = '';
+  applySignalProcessingToRows();
   saveDataToCSV('SineTest');
 
   // Return home
@@ -863,6 +930,7 @@ async function runFrictionTest() {
   // Stop recording and save
   shouldRecordData = false;
   if (recordButton) recordButton.style.color = '';
+  applySignalProcessingToRows();
   saveDataToCSV('FrictionTest');
 
   // Restore high velocity and return home

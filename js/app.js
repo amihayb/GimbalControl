@@ -266,6 +266,8 @@ async function startTorqueTest() {
       intervalMove = null;
       //shouldRecordData = false;
 
+      applySignalProcessingToRows();
+
       // Show test results
       showTorqueTest();
       
@@ -428,7 +430,7 @@ function recordData() {
       recordButton.style.color = ''; // Reset to default
     }
     
-    // Save data to CSV
+    applySignalProcessingToRows();
     saveDataToCSV();
   }
 }
