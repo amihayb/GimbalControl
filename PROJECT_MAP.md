@@ -29,9 +29,9 @@ No server is required — open `index.html` directly (or host it on GitHub Pages
 Scripts are loaded in this exact order in `index.html`:
 
 ```
-constants.js → mathUtils.js → uiUtils.js → gimbalSerial.js
-             → fileHandling.js → plotting.js → movementControl.js → app.js
-             → blauplot-bundle.js
+constants.js → mathUtils.js → uiUtils.js → atpTests.js → panelUI.js
+             → gimbalSerial.js → fileHandling.js → plotting.js
+             → movementControl.js → app.js → blauplot-bundle.js
 ```
 
 Each file exposes its public API by assigning to `window.*` at the bottom, so later scripts can call them.
@@ -71,27 +71,52 @@ Key values:
 ---
 
 ### `js/uiUtils.js`
-**UI panels, ATP test flows, and IBIT results rendering.**
-
-Key responsibilities:
+**Small DOM utilities** — helpers used across the whole app.
 
 | Function | What it does |
 |---|---|
+| `about()` | Shows the about/contact SweetAlert dialog |
 | `drawTable(data)` | Renders a 4-column pass/fail table (Parameter, Traverse, Elevation, Criteria) into `#resultsTable` |
-| `updateInputValue(id, value, scale)` | Updates a live-data input field on screen |
+| `drawTableOneCol(data)` | Renders a 3-column single-value pass/fail table into `#resultsTable` |
+| `cleanUp()` | Hides welcome text, clears `#resultsTable` |
+| `addLabelsLine()` | Toggles the labels nav bar |
 | `playLocalTone()` | Plays the ping sound on joystick moves |
+| `validateAngleInput(el)` | Validates a degree input field |
+| `validateVelocityInput(el)` | Validates a velocity input field |
+| `waitForPosition(tr, el)` | Polls `PositionInputTR/EL` until gimbal reaches target angles |
+| `updateInputValue(id, value, factor, dp)` | Scales a raw number and sets an input field value |
+| `updateErrorBits(val)` | Decodes R1[9] error bits and updates `#errorBitsDisplay` |
+
+---
+
+### `js/atpTests.js`
+**ATP test sequences and results rendering.**
+
+| Function | What it does |
+|---|---|
+| `showIBITResults()` | Hides welcome area, clears `#plot-area`, renders 2×2 BlauPlot subplot + limit lines + pass/fail table via `window.BP` |
+| `runIBIT()` | Full IBIT procedure: connect check, trigger, record, poll R1[51], save CSV, call `showIBITResults()` |
+| `runSineTest()` | Moves to random angles, runs sine scenario, records 15 s, saves CSV, returns home |
+| `runFrictionTest()` | Slow sweep bottom-left → top-right → bottom-left, records throughout, saves CSV |
+
+**Depends on:** `uiUtils.js` (`waitForPosition`), `gimbalSerial.js`, `fileHandling.js`, `movementControl.js`, `blauplot-bundle.js` (`window.BP`), `mathUtils.js` (`minAbs`, `plus`), `app.js` (`rows`, `shouldRecordData`, `startTime`).
+
+---
+
+### `js/panelUI.js`
+**Side-panel open/close functions** — builds and destroys the three navigation panels, and adjusts content-area margins.
+
+| Function | What it does |
+|---|---|
 | `MovementControl()` | Opens the movement control side panel |
 | `closeMovementControl()` | Closes it and restores layout margins |
+| `openComplexScenario(type)` | Opens sine/linear scenario configuration dialog |
+| `closeComplexScenario()` | Closes the dialog |
 | `InstallationSetup()` | Opens the installation setup side panel |
 | `closeInstallationSetup()` | Closes it and restores layout margins |
 | `ATP()` | Opens the ATP test side panel |
 | `closeATP()` | Closes it and restores layout margins |
-| `showIBITResults()` | After IBIT: hides welcome area, clears `#plot-area`, renders 2×2 BlauPlot subplot + limit lines + pass/fail table via `window.BP` |
-| `runIBIT()` | Full IBIT procedure: connect check, trigger, record, poll R1[51], save CSV, call `showIBITResults()` |
-| `runSineTest()` | Sine scenario: random angles, record, save CSV |
-| `runFrictionTest()` | Friction test: sweep, record, save CSV |
-| `waitForPosition(tr, el)` | Polls until gimbal reaches target angles |
-| `updateErrorBits(val)` | Decodes R1[9] error bits and updates UI |
+| `ViewTelemetry()` | Opens Glimpse in a new tab |
 
 **Layout margin management:** Every panel open/close function adjusts `marginLeft` on three elements together: `#explenation_text`, `#plot-area`, and `#resultsTable`.
 - Panel open → `720px` (350px main sidebar + 350px panel + 20px gap)

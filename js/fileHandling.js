@@ -7,6 +7,31 @@
 // ==================== File Reading Functions ====================
 
 /**
+ * Map exported CSV column names to internal rows keys.
+ */
+function normalizeRowsKeys() {
+  const map = {
+    'Time_s': 'time',
+    'Time_ms': 'time',
+    'Tr_Angle_deg': 'Tr_angle',
+    'Tr_Velocity_deg/s': 'Tr_velocity',
+    'Tr_Current_A': 'Tr_current',
+    'El_Angle_deg': 'El_angle',
+    'El_Velocity_deg/s': 'El_velocity',
+    'El_Current_A': 'El_current',
+    'Tr_PosErr_deg': 'Tr_pos_err',
+    'El_PosErr_deg': 'El_pos_err',
+    'Status': 'status',
+  };
+  for (const [from, to] of Object.entries(map)) {
+    if (rows[from] && rows[from].length > 0) {
+      rows[to] = rows[from];
+      delete rows[from];
+    }
+  }
+}
+
+/**
  * Read and parse a CSV file
  * @param {File} file - The file to read
  */
@@ -14,7 +39,9 @@ function readFile(file) {
   const reader = new FileReader();
   reader.onload = function(event) {
     const text = event.target.result;
-    const lines = text.split(/\r?\n/);
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lines.length < 2) return;
+
     const header = lines[0].split(',');
     
     // Initialize rows object with empty arrays
@@ -31,11 +58,9 @@ function readFile(file) {
       }
     }
 
+    normalizeRowsKeys();
+
     // Rename keys to match expected format for backwards compatibility
-    if (rows['Time_ms']) {
-      rows['time'] = rows['Time_ms'];
-      delete rows['Time_ms'];
-    }
     if (rows['Angle_deg']) {
       rows['Tr_angle'] = rows['Angle_deg']; 
       delete rows['Angle_deg'];
@@ -45,19 +70,30 @@ function readFile(file) {
       delete rows['Current_A'];
     }
     if (rows['Torque_mNm']) {
-      rows['Tr_current'] = rows['Torque_mNm']; // Convert torque to current equivalent
+      rows['Tr_current'] = rows['Torque_mNm'];
       delete rows['Torque_mNm'];
     }
     
-    // Initialize missing arrays with zeros if not present
+    // Initialize missing arrays if not present
+    if (!rows['time']) rows['time'] = [];
     if (!rows['Tr_angle']) rows['Tr_angle'] = [];
     if (!rows['Tr_velocity']) rows['Tr_velocity'] = [];
     if (!rows['Tr_current']) rows['Tr_current'] = [];
     if (!rows['El_angle']) rows['El_angle'] = [];
     if (!rows['El_velocity']) rows['El_velocity'] = [];
     if (!rows['El_current']) rows['El_current'] = [];
+    if (!rows['Tr_pos_err']) rows['Tr_pos_err'] = [];
+    if (!rows['El_pos_err']) rows['El_pos_err'] = [];
+    if (!rows['status']) rows['status'] = [];
 
-    showTorqueTest();
+    const name = file.name || '';
+    const isAtpCsv = /^(FrictionTest|IBIT|SineTest)_/i.test(name.replace(/\.csv$/i, ''));
+    if (isAtpCsv && typeof handleAtpCsvLoaded === 'function') {
+      handleAtpCsvLoaded(name);
+    } else if (typeof showTorqueTest === 'function') {
+      applySignalProcessingToRows();
+      showTorqueTest();
+    }
   };
   reader.readAsText(file);
 }
@@ -193,7 +229,7 @@ function applySignalProcessingToRows() {
  * @param {string} prefix - Filename prefix (default: 'lynx')
  */
 function saveDataToCSV(prefix = 'lynx') {
-  let csvContent = "Time_s,Tr_Angle_deg,Tr_Velocity_deg/s,Tr_Current_A,El_Angle_deg,El_Velocity_deg/s,El_Current_A,Status\n";
+  let csvContent = "Time_s,Tr_Angle_deg,Tr_Velocity_deg/s,Tr_Current_A,El_Angle_deg,El_Velocity_deg/s,El_Current_A,Tr_PosErr_deg,El_PosErr_deg,Status\n";
   
   for (let i = 0; i < rows.time.length; i++) {
     const safeFormat = (value) => {
@@ -203,7 +239,7 @@ function saveDataToCSV(prefix = 'lynx') {
       return (value !== null && value !== undefined && !isNaN(value)) ? String(value) : '';
     };
     
-    csvContent += `${rows.time[i].toFixed(3)},${safeFormat(rows.Tr_angle[i])},${safeFormat(rows.Tr_velocity[i])},${safeFormat(rows.Tr_current[i])},${safeFormat(rows.El_angle[i])},${safeFormat(rows.El_velocity[i])},${safeFormat(rows.El_current[i])},${safeInt(rows.status[i])}\n`;
+    csvContent += `${rows.time[i].toFixed(3)},${safeFormat(rows.Tr_angle[i])},${safeFormat(rows.Tr_velocity[i])},${safeFormat(rows.Tr_current[i])},${safeFormat(rows.El_angle[i])},${safeFormat(rows.El_velocity[i])},${safeFormat(rows.El_current[i])},${safeFormat(rows.Tr_pos_err[i])},${safeFormat(rows.El_pos_err[i])},${safeInt(rows.status[i])}\n`;
   }
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -220,6 +256,7 @@ function saveDataToCSV(prefix = 'lynx') {
 // ==================== Exported Functions ====================
 
 // Make functions available globally
+window.normalizeRowsKeys = normalizeRowsKeys;
 window.readFile = readFile;
 window.processData = processData;
 window.export2csv = export2csv;

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlauPlot — Example</title>
+
+  <!-- Plotly is required by BlauPlot. Loaded from CDN. -->
+  <script src="https://cdn.plot.ly/plotly-3.4.0.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1e1e2e;
+      color: #eee;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #cdd6f4;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 20px;
+    }
+
+    /* ── Toolbar ─────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    label.file-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #313244;
+      border: 1px solid #555;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #cdd6f4;
+      transition: background 0.15s;
+    }
+    label.file-btn:hover { background: #45475a; }
+
+    /* hide the native file input */
+    #file-input { display: none; }
+
+    button {
+      padding: 8px 16px;
+      border: 1px solid #555;
+      border-radius: 6px;
+      background: #313244;
+      color: #cdd6f4;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #45475a; }
+    button.primary {
+      background: #4e6bb5;
+      border-color: #6e8fd5;
+    }
+    button.primary:hover { background: #5a7bc5; }
+
+    #file-name {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    /* ── Instructions panel ──────────────────────────────── */
+    .info-box {
+      background: #2a2a3e;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #aaa;
+    }
+    .info-box strong { color: #cdd6f4; }
+    .info-box code {
+      background: #313244;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.82rem;
+      color: #a6e3a1;
+    }
+
+    /* ── Plot container ──────────────────────────────────── */
+    #plot { margin-bottom: 24px; }
+
+    /* ── Results table ───────────────────────────────────── */
+    #results-section { margin-top: 10px; }
+
+    #results-section h2 {
+      font-size: 1rem;
+      color: #cdd6f4;
+      margin-bottom: 10px;
+    }
+
+    #results table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    #results th {
+      background: #313244;
+      color: #cdd6f4;
+      padding: 8px 14px;
+      text-align: center;
+      border-bottom: 2px solid #555;
+    }
+    #results td {
+      padding: 7px 14px;
+      border-bottom: 1px solid #3a3a4f;
+      text-align: center;
+    }
+    #results tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+  <h1>BlauPlot — Example</h1>
+  <p class="subtitle">Signal visualization and analysis · Blau Robotics</p>
+
+  <!-- ── Instructions ─────────────────────────────────────────────────── -->
+  <div class="info-box">
+    <strong>How to use:</strong><br>
+    Click <strong>"Load Demo Data"</strong> to see a generated signal, or click
+    <strong>"Choose CSV File"</strong> to load your own data file.<br><br>
+    Your CSV should have a header row with column names. Example:<br>
+    <code>time,signal_A,signal_B,signal_C,signal_D</code><br>
+    <code>0.00,1.2,0.5,-0.3,0.8</code><br>
+    <code>0.01,1.3,0.6,-0.4,0.9</code>
+    <br><br>
+    <strong>Tip:</strong> Click any data point on the plot to add a value label.
+    Drag to zoom, double-click to reset.
+  </div>
+
+  <!-- ── Toolbar ───────────────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <label class="file-btn" for="file-input">📂 Choose CSV File</label>
+    <input type="file" id="file-input" accept=".csv,.txt" />
+    <button class="primary" id="demo-btn">▶ Load Demo Data</button>
+    <span id="file-name">No file loaded</span>
+  </div>
+
+  <!-- ── Plot area ──────────────────────────────────────────────────────── -->
+  <div id="plot"></div>
+
+  <!-- ── Results table ─────────────────────────────────────────────────── -->
+  <div id="results-section">
+    <h2>Test Results</h2>
+    <div id="results"></div>
+  </div>
+
+  <!-- ── BlauPlot logic ────────────────────────────────────────────────── -->
+  <script type="module">
+
+    // Import everything we need from BlauPlot.
+    // (index.js re-exports parser, plot, and table)
+    import {
+      parseFile,
+      buildLine, buildLayout, plot,
+      yline, xline, enableDataTips,
+      drawTable
+    } from './index.js';
+
+    import { diff, stats } from './math.js';
+
+    // ── Dark theme colours ────────────────────────────────────────────────
+    const theme = {
+      bg:            '#1e1e2e',
+      surface:       '#2a2a3e',
+      border:        '#444',
+      textPrimary:   '#eee',
+      textSecondary: '#aaa',
+    };
+
+    // ── Helper: render rows into the 2×2 grid and table ──────────────────
+    function renderAll(rows, fileName) {
+
+      // The grid has 2 rows and 2 columns → 4 subplots
+      const gridOptions = { gridRows: 2, gridCols: 2 };
+
+      // Pick the first four non-time column names dynamically
+      const timeKey = Object.keys(rows)[0];           // first column = X axis
+      const signals = Object.keys(rows).slice(1, 5);  // next four = Y signals
+
+      // Build one trace per subplot (subplotIndex 1–4)
+      const traces = signals.map((sig, i) =>
+        buildLine(sig, rows, i + 1, timeKey, {
+          ...gridOptions,
+          pattern: 'independent',   // each subplot has its own axes
+        })
+      );
+
+      const layout = buildLayout(2, 2, {
+        pattern:  'independent',
+        roworder: 'top to bottom',  // subplot 1 is top-left
+        theme,
+      });
+
+      plot('plot', traces, layout);
+
+      // Click on any data point to pin a label
+      enableDataTips('plot');
+
+      // Add a horizontal limit line on subplot 1 (yaxis = 'y')
+      yline('plot',  1.5, { label: 'Upper limit', yref: 'y' });
+      yline('plot', -1.5, { yref: 'y' });
+
+      // Add a vertical event marker at 25 % of the time range
+      const timeArr = rows[timeKey];
+      const markerX = timeArr[Math.floor(timeArr.length * 0.25)];
+      xline('plot', markerX, { label: 'Event', color: 'orange', xref: 'x' });
+
+      // ── Results table ─────────────────────────────────────────────────
+      // Calculate max absolute value for each signal
+      const tableData = signals.map(sig => {
+        const s = stats(rows[sig]);
+        return {
+          parameter:       sig,
+          value1:          Math.abs(s.max),          // Traverse column
+          value2:          Math.abs(s.min),           // Elevation column
+          successCriteria: 2.0,
+        };
+      });
+
+      drawTable('results', tableData, {
+        columnNames: ['Peak +', 'Peak −'],
+      });
+
+      document.getElementById('file-name').textContent = `Loaded: ${fileName}`;
+    }
+
+    // ── Load a real CSV file ──────────────────────────────────────────────
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const { rows, fileName } = await parseFile(file);
+      renderAll(rows, fileName);
+    });
+
+    // ── Generate synthetic demo data ──────────────────────────────────────
+    document.getElementById('demo-btn').addEventListener('click', () => {
+      const n  = 500;
+      const dt = 0.01;
+
+      // Build rows manually — same format parseFile would return
+      const rows = { time: [], A: [], B: [], C: [], D: [] };
+
+      for (let i = 0; i < n; i++) {
+        const t = i * dt;
+        rows.time.push(t);
+        rows.A.push(  Math.sin(2 * Math.PI * 1.0 * t) + 0.15 * (Math.random() - 0.5));
+        rows.B.push(  Math.cos(2 * Math.PI * 0.5 * t) * 1.2 + 0.2  * (Math.random() - 0.5));
+        rows.C.push(  Math.sin(2 * Math.PI * 2.0 * t) * 0.8 - 0.3  * Math.sin(t));
+        rows.D.push(  diff(rows.A)[i] ?? 0);  // derivative of A
+      }
+
+      renderAll(rows, 'demo');
+    });
+
+  </script>
+
+</body>
+</html>

@@ -303,8 +303,8 @@ function medianFilter3(arr) {
  * Apply signal processing to a COPY of a rows object.
  * Scales and median-filters all data channels; the original is not modified.
  *   time        : ms  → s   (× 0.001)
- *   angle       :        × 0.1
- *   velocity    :        × 0.1
+ *   angle       :        × 0.001
+ *   velocity    :        × 0.001
  *   current     :        × 0.001
  * Then applies a window-3 median filter to every data channel.
  * 'status' is left untouched.
@@ -319,12 +319,12 @@ function applySignalProcessing(rowsData) {
 
   if (p.time)        p.time        = p.time.map(t => t * 0.001);
 
-  const angleKeys = ['Tr_angle', 'El_angle', 'Tr_cmd_angle', 'El_cmd_angle'];
+  const angleKeys = ['Tr_angle', 'El_angle', 'Tr_cmd_angle', 'El_cmd_angle', 'Tr_pos_err', 'El_pos_err'];
   const velKeys   = ['Tr_velocity', 'El_velocity'];
   const currKeys  = ['Tr_current', 'El_current'];
 
-  for (const k of angleKeys) if (p[k]) p[k] = p[k].map(v => v * 0.1);
-  for (const k of velKeys)   if (p[k]) p[k] = p[k].map(v => v * 0.1);
+  for (const k of angleKeys) if (p[k]) p[k] = p[k].map(v => v * 0.001);
+  for (const k of velKeys)   if (p[k]) p[k] = p[k].map(v => v * 0.001);
   for (const k of currKeys)  if (p[k]) p[k] = p[k].map(v => v * 0.001);
 
   const filterKeys = [...angleKeys, ...velKeys, ...currKeys];
@@ -399,6 +399,141 @@ function maxIdx(array, val) {
   return array.findIndex(n => n > val);
 }
 
+// ==================== Friction Analysis ====================
+
+const FRICTION_MIDLINE_WIN = 30;
+const FRICTION_NUM_BINS = 200;
+const FRICTION_MIN_SAMPLES = 20;
+
+function linspace(min, max, n) {
+  if (n < 2) return [min];
+  const step = (max - min) / (n - 1);
+  return Array.from({ length: n }, (_, i) => min + i * step);
+}
+
+function movingAverage(arr, win) {
+  const half = Math.floor(win / 2);
+  const out = new Array(arr.length).fill(NaN);
+  for (let i = 0; i < arr.length; i++) {
+    const start = Math.max(0, i - half);
+    const end = Math.min(arr.length - 1, i + half);
+    const window = [];
+    for (let j = start; j <= end; j++) {
+      if (!isNaN(arr[j])) window.push(arr[j]);
+    }
+    if (window.length > 0) {
+      out[i] = window.reduce((a, b) => a + b, 0) / window.length;
+    }
+  }
+  return out;
+}
+
+function meanOmitNan(arr) {
+  const valid = arr.filter(v => !isNaN(v));
+  return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : NaN;
+}
+
+/**
+ * Find the forward/backward split index for a friction sweep.
+ * The friction test goes from bottom-left (low angles) to top-right (peak) then back.
+ * Using max(|angle|) fails when |start| equals |end| (e.g. Tr −200° → +200° → −200°).
+ */
+function findTurnaroundIndex(angle) {
+  const validSplit = (idx) => (idx + 1) >= 2 && (angle.length - idx) >= 2;
+
+  // Primary: peak signed angle (first leg increases toward top-right)
+  let turnIdx = 0;
+  let peak = angle[0];
+  for (let i = 1; i < angle.length; i++) {
+    if (angle[i] > peak) {
+      peak = angle[i];
+      turnIdx = i;
+    }
+  }
+  if (validSplit(turnIdx)) return turnIdx;
+
+  // Fallback: max |angle| in the first 70% (skip return-to-start endpoint)
+  const searchEnd = Math.max(2, Math.floor(angle.length * 0.7));
+  let maxAbs = Math.abs(angle[0]);
+  turnIdx = 0;
+  for (let i = 1; i < searchEnd; i++) {
+    const a = Math.abs(angle[i]);
+    if (a > maxAbs) {
+      maxAbs = a;
+      turnIdx = i;
+    }
+  }
+  if (validSplit(turnIdx)) return turnIdx;
+
+  return -1;
+}
+
+function computeFrictionAnalysis(angle, current, options = {}) {
+  const numBins = options.numBins ?? FRICTION_NUM_BINS;
+  const win = options.win ?? FRICTION_MIDLINE_WIN;
+
+  if (!angle || !current || angle.length < FRICTION_MIN_SAMPLES) {
+    throw new Error('Not enough samples for friction analysis (need at least 20).');
+  }
+
+  const turnIdx = findTurnaroundIndex(angle);
+  if (turnIdx < 0) {
+    throw new Error('Could not split forward/backward strokes — turnaround point invalid.');
+  }
+
+  const angleFwd = angle.slice(0, turnIdx + 1);
+  const currentFwd = current.slice(0, turnIdx + 1);
+  const angleBwd = angle.slice(turnIdx);
+  const currentBwd = current.slice(turnIdx);
+
+  const minAng = Math.min(...angle);
+  const maxAng = Math.max(...angle);
+  if (maxAng - minAng === 0) {
+    throw new Error('Angle range is zero — no sweep detected.');
+  }
+
+  const binEdges = linspace(minAng, maxAng, numBins);
+  const binCenters = [];
+  for (let i = 0; i < binEdges.length - 1; i++) {
+    binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
+  }
+
+  const meanFwd = new Array(binCenters.length).fill(NaN);
+  const meanBwd = new Array(binCenters.length).fill(NaN);
+
+  for (let i = 0; i < binCenters.length; i++) {
+    const lo = binEdges[i];
+    const hi = binEdges[i + 1];
+    let fwdSum = 0, fwdCount = 0;
+    let bwdSum = 0, bwdCount = 0;
+    for (let j = 0; j < angleFwd.length; j++) {
+      if (angleFwd[j] >= lo && angleFwd[j] < hi) { fwdSum += currentFwd[j]; fwdCount++; }
+    }
+    for (let j = 0; j < angleBwd.length; j++) {
+      if (angleBwd[j] >= lo && angleBwd[j] < hi) { bwdSum += currentBwd[j]; bwdCount++; }
+    }
+    if (fwdCount >= 1) meanFwd[i] = fwdSum / fwdCount;
+    if (bwdCount >= 1) meanBwd[i] = bwdSum / bwdCount;
+  }
+
+  const rawMidline = meanFwd.map((f, i) => {
+    const b = meanBwd[i];
+    if (isNaN(f) || isNaN(b)) return NaN;
+    return (f + b) / 2;
+  });
+
+  const midline = movingAverage(rawMidline, win);
+  const diffFwd = meanFwd.map((f, i) => (isNaN(f) || isNaN(midline[i]) ? NaN : Math.abs(f - midline[i])));
+  const diffBwd = meanBwd.map((b, i) => (isNaN(b) || isNaN(midline[i]) ? NaN : Math.abs(b - midline[i])));
+
+  return {
+    binCenters, meanFwd, meanBwd, midline, diffFwd, diffBwd,
+    angleFwd, currentFwd, angleBwd, currentBwd,
+    meanDiffFwd: meanOmitNan(diffFwd),
+    meanDiffBwd: meanOmitNan(diffBwd),
+  };
+}
+
 // ==================== Exported Functions ====================
 
 // Make functions available globally
@@ -432,3 +567,9 @@ window.applySignalProcessing = applySignalProcessing;
 window.getIdx = getIdx;
 window.minIdx = minIdx;
 window.maxIdx = maxIdx;
+window.linspace = linspace;
+window.movingAverage = movingAverage;
+window.meanOmitNan = meanOmitNan;
+window.findTurnaroundIndex = findTurnaroundIndex;
+window.computeFrictionAnalysis = computeFrictionAnalysis;
+window.FRICTION_MIDLINE_WIN = FRICTION_MIDLINE_WIN;

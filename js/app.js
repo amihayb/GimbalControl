@@ -72,6 +72,8 @@ let rows = {
   El_current: [],
   Tr_cmd_angle: [],
   El_cmd_angle: [],
+  Tr_pos_err: [],
+  El_pos_err: [],
   status: [],
 };
 
@@ -408,6 +410,8 @@ function recordData() {
       El_current: [],
       Tr_cmd_angle: [],
       El_cmd_angle: [],
+      Tr_pos_err: [],
+      El_pos_err: [],
       status: [],
     };
     

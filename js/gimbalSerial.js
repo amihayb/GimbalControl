@@ -403,7 +403,7 @@ async function updateLiveData() {
   try {
     const readCommand = USE_PACKED_REGISTERS
       ? 'R1[51];R1[52];R1[53];;\r'
-      : 'R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];;\r';
+      : 'R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];R1[35];R1[45];;\r';
     tRead = await readMsg(readCommand, { skipLock: true });
     // let endTime = Date.now();
     // console.log(`Time taken: ${endTime - readTime}ms`);
@@ -432,6 +432,7 @@ async function updateLiveData() {
   let errBits = null;
   let posTr, posEl, velTr, velEl, curTr, curEl;
   let posCmdTr = null, posCmdEl = null, status = null;
+  let posErrTr = null, posErrEl = null;
 
   if (USE_PACKED_REGISTERS) {
     const parts = tRead.split(';').map(Number);
@@ -471,9 +472,11 @@ async function updateLiveData() {
     posEl   = values[i + 3] ?? null;
     velTr   = values[i + 4] ?? null;
     velEl   = values[i + 5] ?? null;
-    curTr   = values[i + 6] ?? null;
-    curEl   = values[i + 7] ?? null;
-    errBits = values[i + 8] ?? null;
+    curTr    = values[i + 6]  ?? null;
+    curEl    = values[i + 7]  ?? null;
+    errBits  = values[i + 8]  ?? null;
+    posErrTr = values[i + 9]  ?? null;
+    posErrEl = values[i + 10] ?? null;
   }
 
   // Only update UI if core values are valid numbers and 100ms have passed since last update
@@ -490,10 +493,10 @@ async function updateLiveData() {
     if (!USE_PACKED_REGISTERS) {
       updateInputValue('systemModeInput', sysMode, 1);
     }
-    updateInputValue('PositionInputTR', posTr);
-    updateInputValue('PositionInputEL', posEl);
-    updateInputValue('VelocityInputTR', velTr,10,0);
-    updateInputValue('VelocityInputEL', velEl,10,0);
+    updateInputValue('PositionInputTR', posTr, 1000, 3);
+    updateInputValue('PositionInputEL', posEl, 1000, 3);
+    updateInputValue('VelocityInputTR', velTr, 1000, 3);
+    updateInputValue('VelocityInputEL', velEl, 1000, 3);
     updateInputValue('CurrentInputTR', curTr,1000,1);
     updateInputValue('CurrentInputEL', curEl,1000,1);
     updateErrorBits(errBits);
@@ -512,6 +515,8 @@ async function updateLiveData() {
     rows.El_current.push(curEl);
     rows.Tr_cmd_angle.push(posCmdTr);
     rows.El_cmd_angle.push(posCmdEl);
+    rows.Tr_pos_err.push(posErrTr);
+    rows.El_pos_err.push(posErrEl);
     rows.status.push(USE_PACKED_REGISTERS ? status : errBits);
     rows.time.push(Date.now() - startTime); // Time in milliseconds
   }

@@ -608,3 +608,84 @@ input[type="text"] {
   border-color: var(--color-btn-action) !important;
   color: var(--color-btn-action) !important;
 }
+
+/* ==================== View Telemetry Panel ====================  */
+
+.vt-test-section {
+  margin: 8px 0 4px;
+}
+
+.vt-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vt-filename-label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  word-break: break-all;
+  flex: 1;
+}
+
+.vt-choose-btn {
+  white-space: nowrap;
+}
+
+/* "Show Results" buttons are dimmed until a file is chosen */
+.vt-show-btn {
+  margin-top: 4px;
+}
+
+.vt-show-btn.vt-disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Print to PDF button — full-width, action colour */
+.vt-print-btn {
+  display: block;
+  width: calc(100% - 20px);
+  text-align: center;
+  background-color: var(--color-btn-action) !important;
+  color: #fff !important;
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.vt-print-btn:hover {
+  background-color: var(--color-btn-action-hover) !important;
+}
+
+/* ==================== Print Media ====================  */
+/*
+ * Ctrl+P / browser print on a single-result view.
+ * The full ATP report uses a separate clean window (see printAtpReport in atpTests.js)
+ * and therefore does not need any special rules here.
+ */
+
+@media print {
+  /* Hide the app chrome */
+  #topnav,
+  #sidenav,
+  .movement-panel {
+    display: none !important;
+  }
+
+  body {
+    padding-top: 0;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Remove sidebar offset so the plot + results table fill the page */
+  #drop-zone {
+    margin-left: 0 !important;
+  }
+
+  /* Hide the drag-and-drop welcome prompt */
+  #explenation_text {
+    display: none !important;
+  }
+}

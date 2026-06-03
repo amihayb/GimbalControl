@@ -1,14 +1,13 @@
 /**
  * UI Utility Functions
- * This module contains all UI helper functions and DOM manipulation utilities
- * used throughout the application.
+ * Small DOM helpers, table renderers, audio, input validation, and live-data display.
+ * Depends on: Swal (SweetAlert2)
  */
 
 /**
  * Show about dialog
  */
 function about(){
-  //alert('For support, contact me:\n\nAmihay Blau\nmail: amihay@blaurobotics.co.il\nPhone: +972-54-6668902');
   Swal.fire({
     title: "Lynx Control",
     html: "For support, contact me:<br><br> Amihay Blau <br> mail: amihay@blaurobotics.co.il <br> Phone: +972-54-6668902",
@@ -19,8 +18,8 @@ function about(){
 // ==================== Table Functions ====================
 
 /**
- * Draw a table with multiple columns of data
- * @param {Array} data - Array of objects containing table data
+ * Draw a pass/fail table with Traverse and Elevation columns into #resultsTable.
+ * @param {Array} data - Array of { parameter, value1, value2, successCriteria, successMethod? }
  */
 function drawTable(data) {
   const container = document.getElementById('resultsTable');
@@ -81,8 +80,8 @@ function drawTable(data) {
 }
 
 /**
- * Draw a table with single column of data
- * @param {Array} data - Array of objects containing table data
+ * Draw a single-value pass/fail table into #resultsTable.
+ * @param {Array} data - Array of { parameter, value1, successCriteria, successMethod }
  */
 function drawTableOneCol(data) {
   const table = document.getElementById('resultsTable');
@@ -101,7 +100,7 @@ function drawTableOneCol(data) {
   headers.forEach(header => {
     const th = document.createElement('th');
     th.textContent = header;
-    th.style.textAlign = 'center';  // Center-align headers
+    th.style.textAlign = 'center';
     headerRow.appendChild(th);
   });
 
@@ -115,7 +114,7 @@ function drawTableOneCol(data) {
     cells.forEach((cellValue, index) => {
       const td = document.createElement('td');
       td.textContent = cellValue;
-      td.style.textAlign = 'center';  // Center-align cell values
+      td.style.textAlign = 'center';
 
       if (item.successMethod === 'bigger')
         success = item.value1 > item.successCriteria;
@@ -123,8 +122,7 @@ function drawTableOneCol(data) {
       if (item.successMethod === 'smaller')
         success = item.value1 < item.successCriteria;
 
-
-      if (index == 1) { // Check only for value column
+      if (index == 1) {
         if (success) {
           td.style.color = 'green';
         } else {
@@ -152,7 +150,6 @@ function cleanUp() {
     explenation_text.style.display = "none";
 
     const table = document.getElementById('resultsTable');
-    // Remove any existing table in the container
     while (table.firstChild) {
       table.removeChild(table.firstChild);
     }
@@ -180,22 +177,6 @@ function addLabelsLine() {
   function updateValue(e) {
     localStorage.setItem('SignalLabels', document.getElementById("labelsInput").value);
   }
-
-  /*if ( !document.getElementById('labelsInput') ) {
- 
-  var label = document.createElement("label");
-  label.innerHTML = "Labels: "
-  label.htmlFor = "labels";
-  var input = document.createElement('input');
-  input.name = 'labelsInput';
-  input.id = 'labelsInput';
-  document.getElementById('labelsNavBar').appendChild(label);
-  document.getElementById('labelsNavBar').appendChild(input);
-  }
-  else {
-    document.getElementById('labelsInput').style.display = 'none';
- 
-  }*/
 }
 
 // ==================== Audio Functions ====================
@@ -206,11 +187,10 @@ function addLabelsLine() {
 function playLocalTone() {
   const audioElement = document.getElementById('localAudio');
   if (audioElement) {
-    audioElement.currentTime = 0; // Reset to beginning
+    audioElement.currentTime = 0;
     audioElement.play().catch(e => console.log('Audio play failed:', e));
   }
 }
-
 
 // ==================== Input Validation Functions ====================
 
@@ -220,7 +200,7 @@ function playLocalTone() {
  */
 function validateAngleInput(inputElement) {
   const value = parseFloat(inputElement.value);
-  if (isNaN(value)) {   //|| value < -160 || value > 110
+  if (isNaN(value)) {
     inputElement.value = '0';
     Swal.fire({
       title: 'Invalid Angle',
@@ -246,715 +226,7 @@ function validateVelocityInput(inputElement) {
   }
 }
 
-// ==================== Movement Control UI Functions ====================
-
-/**
- * Initialize and display the movement control panel
- */
-function MovementControl() {
-  // Update button states
-  document.querySelectorAll('.button').forEach(button => {
-    button.classList.remove('active');
-  });
-  document.getElementById('movement-control-button').classList.add('active');
-
-  // Keep existing plot content when opening side panels.
-
-  // Remove existing movement control panel if it exists
-  const existingPanel = document.getElementById('movement-control-panel');
-  if (existingPanel) {
-    existingPanel.remove();
-  }
-
-  // Create movement control sidebar panel
-  const movementPanel = document.createElement('div');
-  movementPanel.id = 'movement-control-panel';
-  movementPanel.classList.add('movement-panel');
-  movementPanel.innerHTML = `
-    <div class="panel-header">
-      <h1>Movement Control</h1>
-      <button class="panel-close-btn" onclick="closeMovementControl()">×</button>
-    </div>
-    
-    <!-- Angle Control Section -->
-    <div class="target-control" title="Traverse angle control">
-      <label for="trAngle">TR [deg]</label>
-      <input type="number" id="trAngle" value="0" step="0.1" style="width: 60px;" />
-    </div><br>
-    
-    <div class="target-control" title="Elevation angle control">
-      <label for="elAngle">EL [deg]</label>
-      <input type="number" id="elAngle" value="0" step="0.1" style="width: 60px;" />
-    </div><br>
-    
-    <div class="target-control" title="Movement velocity">
-      <label for="movementVelocity">Velocity [deg/s]</label>
-      <input type="number" id="movementVelocity" value="80" min="0" max="80" style="width: 60px;" />
-    </div><br>
-    
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
-      <button onclick="sendToAngles()" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Send to Angles</button>
-    </div><br>
-    
-    <!-- Joystick Control -->
-    <div style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
-      <div id="joystick" style="width: 120px; height: 120px;">
-        <svg width="100%" height="100%" viewBox="0 0 100 100">
-          <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:rgb(16,16,16);stop-opacity:1" />
-              <stop offset="100%" style="stop-color:rgb(240,240,240);stop-opacity:1" />
-            </linearGradient>
-            <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:rgb(240,240,240);stop-opacity:1" />
-              <stop offset="100%" style="stop-color:rgb(16,16,16);stop-opacity:1" />
-            </linearGradient>
-            <linearGradient id="grad3" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:rgb(168,168,168);stop-opacity:1" />
-              <stop offset="100%" style="stop-color:rgb(239,239,239);stop-opacity:1" />
-            </linearGradient>
-          </defs>
-          <circle cx="50" cy="50" r="50" fill="url(#grad1)" />
-          <circle cx="50" cy="50" r="47" fill="url(#grad2)" stroke="black" stroke-width="1.5px" />
-          <circle cx="50" cy="50" r="44" fill="url(#grad3)" />
-          <circle cx="50" cy="50" r="20" fill="#cccccc" stroke="black" stroke-width="1px"
-            onclick="joystickCmd('CENTER');" />
-          <path d="M50,14 54,22 46,22Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('UP')" />
-          <path d="M50,86 54,78 46,78Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('DOWN')" />
-          <path d="M14,50 22,54 22,46Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('LEFT')" />
-          <path d="M86,50 78,54 78,46Z" fill="rgba(0,0,0,0.8)" onclick="joystickCmd('RIGHT')" />
-        </svg>
-      </div>
-    </div>
-
-    <hr>
-    <h2>Predefined Positions</h2>
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="moveToPosition('topLeft', -200, 65)" title="Top Left (-200°, 65°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-up" style="transform: rotate(-45deg); display: inline-block;"></i></button>
-      <button onclick="moveToPosition('topRight', 200, 65)" title="Top Right (200°, 65°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-up" style="transform: rotate(45deg); display: inline-block;"></i></button>
-    </div><br>
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
-      <button onclick="moveToPosition('home', 0, 0)" title="Home (0°, 0°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-home"></i></button>
-    </div><br>
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="moveToPosition('bottomLeft', -200, -15)" title="Bottom Left (-200°, -15°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-down" style="transform: rotate(45deg); display: inline-block;"></i></button>
-      <button onclick="moveToPosition('bottomRight', 200, -15)" title="Bottom Right (200°, -15°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-down" style="transform: rotate(-45deg); display: inline-block;"></i></button>
-    </div><br>
-    
-    <hr>
-    <h2>Scenarios</h2>
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="runScenario('scan')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Scan</button>
-      <button onclick="runScenario('demo1')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Demo 1</button>
-      <button onclick="runScenario('demo2')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Demo 2</button>
-    </div><br>
-    
-    <hr>
-    <h2>Complex Scenarios</h2>
-    <div style="margin: 10px 0;">
-      <button onclick="openComplexScenario('sine')">Sine Move</button>
-      <button onclick="openComplexScenario('linear')">Repeat Linear</button>
-    </div>
-    
-  `;
-
-  document.body.appendChild(movementPanel);
-
-  // Send velocity to both axes when the user changes the velocity input
-  const velInput = document.getElementById('movementVelocity');
-  velInput.addEventListener('change', () => sendVelocity(velInput.value));
-  velInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendVelocity(velInput.value); });
-  
-  // Adjust main content area to account for extended sidebar
-  const explanationTextEl = document.getElementById('explenation_text');
-  const plotAreaEl = document.getElementById('plot-area');
-  const resultsTableEl = document.getElementById('resultsTable');
-  explanationTextEl.style.marginLeft = '720px'; // 350px (main sidebar) + 350px (movement panel) + 20px gap
-  plotAreaEl.style.marginLeft = '720px';
-  resultsTableEl.style.marginLeft = '720px';
-}
-
-/**
- * Close the movement control panel and restore layout
- */
-function closeMovementControl() {
-  const movementPanel = document.getElementById('movement-control-panel');
-  if (movementPanel) {
-    movementPanel.remove();
-    
-    // Restore original layout
-    const explanationTextRestore = document.getElementById('explenation_text');
-    const plotAreaRestore = document.getElementById('plot-area');
-    const resultsTableRestore = document.getElementById('resultsTable');
-    explanationTextRestore.style.marginLeft = '370px'; // Back to original: 350px sidebar + 20px gap
-    plotAreaRestore.style.marginLeft = '370px';
-    resultsTableRestore.style.marginLeft = '370px';
-  }
-}
-
-/**
- * Open complex scenario configuration dialog
- * @param {string} type - Scenario type ('sine' or 'linear')
- */
-function openComplexScenario(type) {
-  updateMovementStatus(`Opening ${type} scenario configuration...`, 'configuring');
-  
-  // Create submenu for complex scenarios
-  const existingSubmenu = document.getElementById('complex-scenario-submenu');
-  if (existingSubmenu) {
-    existingSubmenu.remove();
-  }
-
-  const submenu = document.createElement('div');
-  submenu.id = 'complex-scenario-submenu';
-  submenu.classList.add('scenario-submenu');
-  submenu.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    z-index: 1000;
-    min-width: 400px;
-  `;
-
-  if (type === 'sine') {
-    submenu.innerHTML = `
-      <h3>Sine Move Configuration</h3>
-      <div style="margin: 15px 0;">
-        <label>Amplitude [deg]:</label>
-        <input type="number" id="sineAmplitude" value="30" style="width: 100%; padding: 8px; margin: 5px 0;">
-      </div>
-      <div style="margin: 15px 0;">
-        <label>Frequency [Hz]:</label>
-        <input type="number" id="sineFrequency" value="0.1" step="0.01" style="width: 100%; padding: 8px; margin: 5px 0;">
-      </div>
-      <div style="margin: 15px 0;">
-        <label>Duration [sec]:</label>
-        <input type="number" id="sineDuration" value="60" style="width: 100%; padding: 8px; margin: 5px 0;">
-      </div>
-      <div style="display: flex; gap: 10px; justify-content: end; margin-top: 20px;">
-        <button onclick="closeComplexScenario()" style="padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Cancel</button>
-        <button onclick="startSineMove()" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Start</button>
-      </div>
-    `;
-  } else if (type === 'linear') {
-    submenu.innerHTML = `
-      <h3>Repeat Linear Move Configuration</h3>
-      <div style="margin: 15px 0;">
-        <label>Start Angle [deg]:</label>
-        <input type="number" id="linearStart" value="-30" style="width: 100%; padding: 8px; margin: 5px 0;">
-      </div>
-      <div style="margin: 15px 0;">
-        <label>End Angle [deg]:</label>
-        <input type="number" id="linearEnd" value="30" style="width: 100%; padding: 8px; margin: 5px 0;">
-      </div>
-      <div style="margin: 15px 0;">
-        <label>Repetitions:</label>
-        <input type="number" id="linearReps" value="5" min="1" style="width: 100%; padding: 8px; margin: 5px 0;">
-      </div>
-      <div style="margin: 15px 0;">
-        <label>Velocity [deg/s]:</label>
-        <input type="number" id="linearVelocity" value="20" style="width: 100%; padding: 8px; margin: 5px 0;">
-      </div>
-      <div style="display: flex; gap: 10px; justify-content: end; margin-top: 20px;">
-        <button onclick="closeComplexScenario()" style="padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Cancel</button>
-        <button onclick="startLinearMove()" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Start</button>
-      </div>
-    `;
-  }
-
-  document.body.appendChild(submenu);
-}
-
-/**
- * Close complex scenario configuration dialog
- */
-function closeComplexScenario() {
-  const submenu = document.getElementById('complex-scenario-submenu');
-  if (submenu) {
-    submenu.remove();
-  }
-}
-
-// ==================== Installation Setup UI Functions ====================
-
-/**
- * Initialize and display the installation setup panel
- */
-function InstallationSetup() {
-  // Update button states
-  document.querySelectorAll('.button').forEach(button => {
-    button.classList.remove('active');
-  });
-  const installationButton = document.querySelector('a[onclick*="InstallationSetup"]');
-  if (installationButton) {
-    installationButton.classList.add('active');
-  }
-
-  // Keep existing plot content when opening side panels.
-
-  // Remove existing installation setup panel if it exists
-  const existingPanel = document.getElementById('installation-setup-panel');
-  if (existingPanel) {
-    existingPanel.remove();
-  }
-
-  // Create installation setup sidebar panel
-  const installationPanel = document.createElement('div');
-  installationPanel.id = 'installation-setup-panel';
-  installationPanel.classList.add('movement-panel');
-
-  installationPanel.innerHTML = `
-    <div class="panel-header">
-      <h1>Installation Setup</h1>
-      <button class="panel-close-btn" onclick="closeInstallationSetup()">×</button>
-    </div>
-    
-    <hr>
-    <h2>Setup Procedures</h2>
-    <div style="margin: 10px 0;">
-      <a class="button" onclick="setZeroAngles('tr')">Set Zero TR</a>
-      <a class="button" onclick="setZeroAngles('el')">Set Zero EL</a>
-      <a class="button" id="btn-commutation-1" onclick="commutation(1)">Commutation Traverse</a>
-      <a class="button" id="btn-commutation-2" onclick="commutation(2)">Commutation Elevation</a>
-      <a class="button" onclick="saveElmo()">Save Elmo Settings</a>
-    </div>
-  `;
-
-  document.body.appendChild(installationPanel);
-  
-  // Adjust main content area to account for extended sidebar
-  const explanationTextEl = document.getElementById('explenation_text');
-  const plotAreaEl = document.getElementById('plot-area');
-  const resultsTableEl = document.getElementById('resultsTable');
-  explanationTextEl.style.marginLeft = '720px'; // 350px (main sidebar) + 350px (installation panel) + 20px gap
-  plotAreaEl.style.marginLeft = '720px';
-  resultsTableEl.style.marginLeft = '720px';
-}
-
-/**
- * Close the installation setup panel and restore layout
- */
-function closeInstallationSetup() {
-  const installationPanel = document.getElementById('installation-setup-panel');
-  if (installationPanel) {
-    installationPanel.remove();
-    
-    // Restore original layout
-    const explanationTextRestore = document.getElementById('explenation_text');
-    const plotAreaRestore = document.getElementById('plot-area');
-    const resultsTableRestore = document.getElementById('resultsTable');
-    explanationTextRestore.style.marginLeft = '370px'; // Back to original: 350px sidebar + 20px gap
-    plotAreaRestore.style.marginLeft = '370px';
-    resultsTableRestore.style.marginLeft = '370px';
-  }
-}
-
-// ==================== ATP UI Functions ====================
-
-/**
- * Initialize and display the ATP (Acceptance Test Procedure) panel
- */
-function ATP() {
-  // Update button states
-  document.querySelectorAll('.button').forEach(button => {
-    button.classList.remove('active');
-  });
-  const atpButton = document.querySelector('a[onclick*="ATP"]');
-  if (atpButton) {
-    atpButton.classList.add('active');
-  }
-
-  // Keep existing plot content when opening side panels.
-
-  // Remove existing ATP panel if it exists
-  const existingPanel = document.getElementById('atp-panel');
-  if (existingPanel) {
-    existingPanel.remove();
-  }
-
-  // Create ATP sidebar panel
-  const atpPanel = document.createElement('div');
-  atpPanel.id = 'atp-panel';
-  atpPanel.classList.add('movement-panel');
-
-  atpPanel.innerHTML = `
-    <div class="panel-header">
-      <h1>ATP</h1>
-      <button class="panel-close-btn" onclick="closeATP()">×</button>
-    </div>
-    
-    <hr>
-    <h2>Test Procedures</h2>
-    <div style="margin: 10px 0;">
-      <a class="button" id="btn-atp-ibit" onclick="runIBIT()">IBIT</a>
-      <a class="button" id="btn-atp-sine" onclick="runSineTest()">Sine Test</a>
-      <a class="button" id="btn-atp-friction" onclick="runFrictionTest()">Friction Test</a>
-    </div>
-  `;
-
-  document.body.appendChild(atpPanel);
-
-  // Adjust main content area to account for extended sidebar
-  const explanationTextEl = document.getElementById('explenation_text');
-  const plotAreaEl = document.getElementById('plot-area');
-  const resultsTableEl = document.getElementById('resultsTable');
-  explanationTextEl.style.marginLeft = '720px';
-  plotAreaEl.style.marginLeft = '720px';
-  resultsTableEl.style.marginLeft = '720px';
-}
-
-/**
- * Close the ATP panel and restore layout
- */
-function closeATP() {
-  const atpPanel = document.getElementById('atp-panel');
-  if (atpPanel) {
-    atpPanel.remove();
-
-    // Restore original layout
-    const explanationTextRestore = document.getElementById('explenation_text');
-    const plotAreaRestore = document.getElementById('plot-area');
-    const resultsTableRestore = document.getElementById('resultsTable');
-    explanationTextRestore.style.marginLeft = '370px';
-    plotAreaRestore.style.marginLeft = '370px';
-    resultsTableRestore.style.marginLeft = '370px';
-  }
-}
-
-/**
- * Open Glimpse telemetry viewer in a new tab
- */
-function ViewTelemetry() {
-  document.querySelectorAll('.button').forEach(button => {
-    button.classList.remove('active');
-  });
-  const telemetryButton = document.querySelector('a[onclick*="ViewTelemetry"]');
-  if (telemetryButton) telemetryButton.classList.add('active');
-
-  window.open('https://amihayb.github.io/Glimpse/', '_blank');
-
-  if (telemetryButton) {
-    setTimeout(() => telemetryButton.classList.remove('active'), 500);
-  }
-}
-
-/**
- * Render IBIT results: hide welcome area, clear plot-area, draw 2×2 subplot and pass/fail table.
- * Called after every IBIT run regardless of outcome.
- */
-function showIBITResults() {
-  const welcomeEl = document.getElementById('explenation_text');
-  if (welcomeEl) welcomeEl.style.display = 'none';
-
-  const plotArea = document.getElementById('plot-area');
-  while (plotArea.firstChild) plotArea.removeChild(plotArea.firstChild);
-  const plotDiv = document.createElement('div');
-  plotDiv.id = 'plot';
-  plotArea.appendChild(plotDiv);
-
-  const gridOptions = { gridRows: 2, gridCols: 2, pattern: 'independent' };
-  const traces = [
-    BP.buildLine('Tr_angle',    rows, 1, 'time', gridOptions),
-    BP.buildLine('El_angle',    rows, 2, 'time', gridOptions),
-    BP.buildLine('Tr_velocity', rows, 3, 'time', gridOptions),
-    BP.buildLine('El_velocity', rows, 4, 'time', gridOptions),
-  ];
-  const layout = BP.buildLayout(2, 2, { pattern: 'independent', roworder: 'top to bottom' });
-  BP.plot('plot', traces, layout);
-
-  BP.yline('plot',  200, { color: 'green', dash: 'dash', label: 'sector limits',    yref: 'y',  xref: 'x domain',  editable: false });
-  BP.yline('plot', -200, { color: 'green', dash: 'dash',                             yref: 'y',  xref: 'x domain',  editable: false });
-  BP.yline('plot',   60, { color: 'green', dash: 'dash', label: 'sector limits',    yref: 'y2', xref: 'x2 domain', editable: false });
-  BP.yline('plot',  -15, { color: 'green', dash: 'dash',                             yref: 'y2', xref: 'x2 domain', editable: false });
-  BP.yline('plot',   80, { color: 'green', dash: 'dash', label: 'Velocity Command', yref: 'y3', xref: 'x3 domain', editable: false });
-  BP.yline('plot',  -80, { color: 'green', dash: 'dash',                             yref: 'y3', xref: 'x3 domain', editable: false });
-  BP.yline('plot',   80, { color: 'green', dash: 'dash', label: 'Velocity Command', yref: 'y4', xref: 'x4 domain', editable: false });
-  BP.yline('plot',  -80, { color: 'green', dash: 'dash',                             yref: 'y4', xref: 'x4 domain', editable: false });
-
-  BP.drawTable('resultsTable', [
-    {
-      parameter: 'Upper Sector Limits Error',
-      value1: minAbs(plus(rows.Tr_angle, -200)),
-      value2: minAbs(plus(rows.Tr_angle, -60)),
-      successCriteria: 1,
-      successMethod: 'smaller'
-    },
-    {
-      parameter: 'Lower Sector Limits Error',
-      value1: minAbs(plus(rows.Tr_angle, 200)),
-      value2: minAbs(plus(rows.El_angle, 15)),
-      successCriteria: 1,
-      successMethod: 'smaller'
-    },
-    {
-      parameter: 'Right Max Velocity Error',
-      value1: minAbs(plus(rows.Tr_velocity, -80)),
-      value2: minAbs(plus(rows.El_velocity, -80)),
-      successCriteria: 4,
-      successMethod: 'smaller'
-    }
-    {
-      parameter: 'Left Max Velocity Error',
-      value1: minAbs(plus(rows.Tr_velocity, 80)),
-      value2: minAbs(plus(rows.El_velocity, 80)),
-      successCriteria: 4,
-      successMethod: 'smaller'
-    }
-  ]);
-}
-
-/**
- * Run IBIT (Built-In Test) procedure
- */
-async function runIBIT() {
-  if (!serialPort) {
-    Swal.fire({ title: 'No Connection', text: 'Please connect to the device first', icon: 'error' });
-    return;
-  }
-
-  const motorToggleEl = document.getElementById('motor-toggle');
-  if (!motorToggleEl || !motorToggleEl.checked) {
-    Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running IBIT', icon: 'warning' });
-    return;
-  }
-
-  const ibitBtn = document.getElementById('btn-atp-ibit');
-  if (ibitBtn) {
-    ibitBtn.classList.add('in-progress');
-    ibitBtn.style.setProperty('--progress', '0%');
-  }
-
-  // Set max velocity
-  await readMsg('R1[13]=80; R1[23]=80;');
-
-  // Trigger IBIT
-  await sendMsg('R1[1]=5\r');
-
-  // Start recording
-  shouldRecordData = true;
-  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [], Tr_cmd_angle: [], El_cmd_angle: [], status: [] };
-  startTime = Date.now();
-  const recordButton = document.getElementById('recordButton');
-  if (recordButton) recordButton.style.color = '#dc3545';
-
-  // Poll R1[51] until result or timeout (30 seconds)
-  const maxWaitMs = 12000;
-  const pollIntervalMs = 200;
-  const pollStart = Date.now();
-  let ibitResult = null;
-
-  while (Date.now() - pollStart < maxWaitMs) {
-    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
-
-    const pct = Math.min(100, Math.round(((Date.now() - pollStart) / maxWaitMs) * 100));
-    if (ibitBtn) ibitBtn.style.setProperty('--progress', `${pct}%`);
-
-    const response = await readMsg('R1[51];;\r');
-    console.log(response);
-    const value = parseInt(response.trim().split(';')[0]);
-    console.log(value);
-    if (value === 4) { ibitResult = 'success'; break; }
-    if (value === 9) { ibitResult = 'failure'; break; }
-  }
-
-  if (ibitBtn) ibitBtn.style.setProperty('--progress', '100%');
-  await new Promise(resolve => setTimeout(resolve, 300));
-  if (ibitBtn) {
-    ibitBtn.classList.remove('in-progress');
-    ibitBtn.style.removeProperty('--progress');
-  }
-
-  // Stop recording
-  shouldRecordData = false;
-  if (recordButton) recordButton.style.color = '';
-  applySignalProcessingToRows();
-  saveDataToCSV('IBIT');
-
-  // Show result
-  if (ibitResult === 'success') {
-    Swal.fire({ title: 'IBIT Passed ✓', text: 'IBIT completed successfully (R1[51] = 4)', icon: 'success' });
-  } else if (ibitResult === 'failure') {
-    Swal.fire({ title: 'IBIT Failed ✗', text: 'IBIT test failed (R1[51] = 9)', icon: 'error' });
-  } else {
-    Swal.fire({ title: 'IBIT Timeout', text: 'IBIT did not complete within 30 seconds', icon: 'warning' });
-  }
-  showIBITResults();
-}
-
-/**
- * Run Sine Test: move to random angles, run sine scenario, record 10s, return home
- */
-async function runSineTest() {
-  if (!serialPort) {
-    Swal.fire({ title: 'No Connection', text: 'Please connect to the device first', icon: 'error' });
-    return;
-  }
-
-  const motorToggleEl = document.getElementById('motor-toggle');
-  if (!motorToggleEl || !motorToggleEl.checked) {
-    Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running Sine Test', icon: 'warning' });
-    return;
-  }
-
-  const sineBtn = document.getElementById('btn-atp-sine');
-  if (sineBtn) {
-    sineBtn.classList.add('in-progress');
-    sineBtn.style.setProperty('--progress', '0%');
-  }
-
-  // Pick random target angles
-  const randomAngTr = Math.round(Math.random() * (90 - (-190)) + (-190));
-  const randomAngEl = Math.round(Math.random() * (50 - (-10)) + (-10));
-  console.log(`Sine Test: moving to TR=${randomAngTr}°, EL=${randomAngEl}°`);
-
-  // Set max velocity
-  await readMsg('R1[13]=80; R1[23]=80;');
-
-  // Move to random angles and wait for arrival
-  moveToPosition('sine-target', randomAngTr, randomAngEl);
-  await waitForPosition(randomAngTr, randomAngEl);
-
-  // Start sine scenario
-  await sendMsg(`R1[16]=10; R1[17]=40; R1[18]=${randomAngTr}; R1[26]=5; R1[27]=40; R1[28]=${randomAngEl}; R1[1]=13;`);
-
-  // Start recording
-  shouldRecordData = true;
-  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [], Tr_cmd_angle: [], El_cmd_angle: [], status: [] };
-  startTime = Date.now();
-  const recordButton = document.getElementById('recordButton');
-  if (recordButton) recordButton.style.color = '#dc3545';
-
-  // Wait 10 seconds while updating progress bar
-  const recordDuration = 15000;
-  const pollInterval = 200;
-  const recordStart = Date.now();
-  while (Date.now() - recordStart < recordDuration) {
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
-    const pct = Math.min(100, Math.round(((Date.now() - recordStart) / recordDuration) * 100));
-    if (sineBtn) sineBtn.style.setProperty('--progress', `${pct}%`);
-  }
-
-  // Stop recording and save
-  shouldRecordData = false;
-  if (recordButton) recordButton.style.color = '';
-  applySignalProcessingToRows();
-  saveDataToCSV('SineTest');
-
-  // Return home
-  moveToPosition('home', 0, 0);
-
-  if (sineBtn) sineBtn.style.setProperty('--progress', '100%');
-  await new Promise(resolve => setTimeout(resolve, 300));
-  if (sineBtn) {
-    sineBtn.classList.remove('in-progress');
-    sineBtn.style.removeProperty('--progress');
-  }
-
-  Swal.fire({ title: 'Sine Test Complete', text: `Recorded at TR=${randomAngTr}°, EL=${randomAngEl}°`, icon: 'success' });
-}
-
-/**
- * Run Friction Test: slow sweep from bottom-left to top-right and back, recording throughout
- */
-async function runFrictionTest() {
-  if (!serialPort) {
-    Swal.fire({ title: 'No Connection', text: 'Please connect to the device first', icon: 'error' });
-    return;
-  }
-
-  const motorToggleEl = document.getElementById('motor-toggle');
-  if (!motorToggleEl || !motorToggleEl.checked) {
-    Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running Friction Test', icon: 'warning' });
-    return;
-  }
-
-  const frictionBtn = document.getElementById('btn-atp-friction');
-  if (frictionBtn) {
-    frictionBtn.classList.add('in-progress');
-    frictionBtn.style.setProperty('--progress', '0%');
-  }
-
-  // Move to bottom-left at high speed and wait for arrival
-  await readMsg('R1[13]=80; R1[23]=80;');
-  moveToPosition('bottomLeft', PREDEFINED_POSITIONS.bottomLeft.tr, PREDEFINED_POSITIONS.bottomLeft.el);
-  await waitForPosition(PREDEFINED_POSITIONS.bottomLeft.tr, PREDEFINED_POSITIONS.bottomLeft.el);
-
-  // Set slow velocity for the sweep
-  await readMsg('R1[13]=10; R1[23]=10;');
-
-  // Start recording
-  shouldRecordData = true;
-  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [], Tr_cmd_angle: [], El_cmd_angle: [], status: [] };
-  startTime = Date.now();
-  const recordButton = document.getElementById('recordButton');
-  if (recordButton) recordButton.style.color = '#dc3545';
-
-  // Sweep to top-right (leg 1: ~45s at 10 deg/s over 400 deg TR)
-  // Leg 1: sweep to top-right, progress bar 0→50%
-  const trStart1 = PREDEFINED_POSITIONS.bottomLeft.tr, elStart1 = PREDEFINED_POSITIONS.bottomLeft.el;
-  const trEnd1   = PREDEFINED_POSITIONS.topRight.tr,   elEnd1   = PREDEFINED_POSITIONS.topRight.el;
-  const dist1 = Math.max(Math.abs(trEnd1 - trStart1), Math.abs(elEnd1 - elStart1));
-  moveToPosition('topRight', trEnd1, elEnd1);
-  while (true) {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const curTr = parseFloat(document.getElementById('PositionInputTR')?.value);
-    const curEl = parseFloat(document.getElementById('PositionInputEL')?.value);
-    if (!isNaN(curTr) && !isNaN(curEl)) {
-      const remaining = Math.max(Math.abs(trEnd1 - curTr), Math.abs(elEnd1 - curEl));
-      const pct = Math.min(50, Math.round((1 - remaining / dist1) * 50));
-      if (frictionBtn) frictionBtn.style.setProperty('--progress', `${pct}%`);
-      if (remaining <= 0.2) break;
-    }
-  }
-
-  // Leg 2: sweep back to bottom-left, progress bar 50→100%
-  const trEnd2 = PREDEFINED_POSITIONS.bottomLeft.tr, elEnd2 = PREDEFINED_POSITIONS.bottomLeft.el;
-  const dist2 = Math.max(Math.abs(trEnd2 - trEnd1), Math.abs(elEnd2 - elEnd1));
-  moveToPosition('bottomLeft', trEnd2, elEnd2);
-  while (true) {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const curTr = parseFloat(document.getElementById('PositionInputTR')?.value);
-    const curEl = parseFloat(document.getElementById('PositionInputEL')?.value);
-    if (!isNaN(curTr) && !isNaN(curEl)) {
-      const remaining = Math.max(Math.abs(trEnd2 - curTr), Math.abs(elEnd2 - curEl));
-      const pct = Math.min(100, 50 + Math.round((1 - remaining / dist2) * 50));
-      if (frictionBtn) frictionBtn.style.setProperty('--progress', `${pct}%`);
-      if (remaining <= 0.2) break;
-    }
-  }
-
-  // Stop recording and save
-  shouldRecordData = false;
-  if (recordButton) recordButton.style.color = '';
-  applySignalProcessingToRows();
-  saveDataToCSV('FrictionTest');
-
-  // Restore high velocity and return home
-  await readMsg('R1[13]=80; R1[23]=80;');
-  moveToPosition('home', 0, 0);
-
-  if (frictionBtn) frictionBtn.style.setProperty('--progress', '100%');
-  await new Promise(resolve => setTimeout(resolve, 300));
-  if (frictionBtn) {
-    frictionBtn.classList.remove('in-progress');
-    frictionBtn.style.removeProperty('--progress');
-  }
-
-  Swal.fire({ title: 'Friction Test Complete', text: 'Data saved to CSV.', icon: 'success' });
-}
-
 // ==================== Input Value Functions ====================
-
-/**
- * Update input element value with number conversion and scaling
- * @param {string} inputId - ID of the input element to update
- * @param {string|number} valueString - Value to set (will be converted to number)
- * @param {number} factor - Scaling factor (default: 10)
- */
 
 /**
  * Poll until the gimbal reaches the target position within tolerance, or timeout.
@@ -982,17 +254,20 @@ async function waitForPosition(targetTr, targetEl, tolerance = 0.2, timeoutMs = 
   return false;
 }
 
+/**
+ * Update input element value with number conversion and scaling
+ * @param {string} inputId - ID of the input element to update
+ * @param {string|number} valueString - Value to set (will be converted to number)
+ * @param {number} factor - Scaling factor (default: 10)
+ * @param {number} decimalPlaces - Decimal places for display (default: 1)
+ */
 async function updateInputValue(inputId, valueString, factor = 10, decimalPlaces = 1) {
-  // Convert the valueString to a number
   const number = parseFloat(valueString);
   if (isNaN(number)) {
-    // console.error(`Invalid number: "${valueString}"`);
     return;
   }
 
-  // Calculate the new value
-  const newValue = (number / factor).toFixed(decimalPlaces); 
-  // Update the input box value
+  const newValue = (number / factor).toFixed(decimalPlaces);
   const inputElement = document.getElementById(inputId);
   if (inputElement) {
     inputElement.value = newValue;
@@ -1046,26 +321,14 @@ function updateErrorBits(errBits) {
 
 // ==================== Exported Functions ====================
 
-// Make functions available globally
-window.drawTable = drawTable;
-window.drawTableOneCol = drawTableOneCol;
-window.cleanUp = cleanUp;
-window.addLabelsLine = addLabelsLine;
-window.playLocalTone = playLocalTone;
-window.about = about;
-window.validateAngleInput = validateAngleInput;
+window.about               = about;
+window.drawTable           = drawTable;
+window.drawTableOneCol     = drawTableOneCol;
+window.cleanUp             = cleanUp;
+window.addLabelsLine       = addLabelsLine;
+window.playLocalTone       = playLocalTone;
+window.validateAngleInput  = validateAngleInput;
 window.validateVelocityInput = validateVelocityInput;
-window.MovementControl = MovementControl;
-window.closeMovementControl = closeMovementControl;
-window.openComplexScenario = openComplexScenario;
-window.closeComplexScenario = closeComplexScenario;
-window.InstallationSetup = InstallationSetup;
-window.closeInstallationSetup = closeInstallationSetup;
-window.ATP = ATP;
-window.closeATP = closeATP;
-window.ViewTelemetry = ViewTelemetry;
-window.runIBIT = runIBIT;
-window.runSineTest = runSineTest;
-window.runFrictionTest = runFrictionTest;
-window.updateInputValue = updateInputValue;
-window.updateErrorBits = updateErrorBits;
+window.waitForPosition     = waitForPosition;
+window.updateInputValue    = updateInputValue;
+window.updateErrorBits     = updateErrorBits;
