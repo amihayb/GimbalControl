@@ -272,12 +272,13 @@ async function commutation(axis = 2) {
   }
 
   const result = await Swal.fire({
-    title: 'Perform Commutation',
-    text: `Are you sure you want to perform commutation?`,
-    icon: 'question',
+    title: 'Start Motor Commutation',
+    html: `<b>Warning!</b> Commutation may cause sudden movement.<br>Ensure the area is clear before proceeding.<br>Keep clear of moving parts and do not insert fingers or objects into the mechanism.`,
+    icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Yes',
-    cancelButtonText: 'No'
+    confirmButtonText: 'Proceed',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#d33'
   });
   if (!result.isConfirmed) {
     console.log('Canceled');
@@ -346,12 +347,13 @@ async function commutationStepByStep(axis = 2) {
   }
 
   const result = await Swal.fire({
-    title: 'Perform Commutation',
-    text: `Are you sure you want to perform commutation?`,
-    icon: 'question',
+    title: 'Start Motor Commutation',
+    html: `<b>Warning!</b> Commutation may cause sudden movement.<br>Ensure the area is clear before proceeding.<br>Keep clear of moving parts and do not insert fingers or objects into the mechanism.`,
+    icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Yes',
-    cancelButtonText: 'No'
+    confirmButtonText: 'Proceed',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#d33'
   });
   if (!result.isConfirmed) {
     console.log('Canceled');

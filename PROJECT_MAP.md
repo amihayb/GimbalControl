@@ -90,14 +90,31 @@ Key values:
 ---
 
 ### `js/atpTests.js`
-**ATP test sequences and results rendering.**
+**ATP test sequences, results rendering, and PDF report generation.**
 
 | Function | What it does |
 |---|---|
-| `showIBITResults()` | Hides welcome area, clears `#plot-area`, renders 2×2 BlauPlot subplot + limit lines + pass/fail table via `window.BP` |
-| `runIBIT()` | Full IBIT procedure: connect check, trigger, record, poll R1[51], save CSV, call `showIBITResults()` |
+| `showIBITResults(plotId?, tableId?)` | Renders 2×2 BlauPlot subplot + limit lines + pass/fail table |
+| `showSineTestResults(plotId?, tableId?)` | Renders sine test plot + table |
+| `showFrictionTestResults(tr, el, plotId?, tableId?)` | Renders friction analysis plots + table |
+| `finishIbitTableResults(silent?)` | Computes pass/fail, optionally shows result popup, calls `showIBITResults()` |
+| `finishSineTestResults(detail?, silent?)` | Same pattern for sine test |
+| `finishFrictionTestResults(silent?)` | Same pattern for friction test |
+| `handleAtpCsvLoaded(fileName)` | Called when a CSV is loaded; routes to the right `finish*` function with `silent=true` (no popup) |
+| `runIBIT()` | Full IBIT procedure: connect check, trigger, record, poll R1[51], save CSV |
 | `runSineTest()` | Moves to random angles, runs sine scenario, records 15 s, saves CSV, returns home |
 | `runFrictionTest()` | Slow sweep bottom-left → top-right → bottom-left, records throughout, saves CSV |
+| `vtMarkTestLoaded(type)` | Saves `rows` snapshot into `vtSavedRows`, enables Show Results button, checks if all 3 loaded |
+| `resetVtLoadedTests()` | Clears `vtSavedRows` and `vtLoadedTests` state |
+| `checkAllTestsLoaded()` | Shows Print to PDF button when all 3 tests are loaded |
+| `vtShowIbitResults()` | Re-displays IBIT from saved snapshot (no popup) |
+| `vtShowSineResults()` | Re-displays Sine Test from saved snapshot |
+| `vtShowFrictionResults()` | Re-displays Friction Test from saved snapshot |
+| `printAtpReport()` | Builds and opens a print-ready PDF report — reads metadata from panel fields, captures plots with forced white theme, includes logo header (repeats every page via `<thead>`), summary page with per-test pass/fail and overall result |
+
+**`silent` parameter on `finish*` functions:** when `true`, skips the pass/fail SweetAlert popup. Used when loading CSVs from the ATP Results panel.
+
+**`vtSavedRows`:** module-level object `{ ibit, sine, friction }` holding deep copies of `rows` for each loaded test — used by `printAtpReport` and the `vtShow*` functions.
 
 **Depends on:** `uiUtils.js` (`waitForPosition`), `gimbalSerial.js`, `fileHandling.js`, `movementControl.js`, `blauplot-bundle.js` (`window.BP`), `mathUtils.js` (`minAbs`, `plus`), `app.js` (`rows`, `shouldRecordData`, `startTime`).
 
@@ -116,7 +133,16 @@ Key values:
 | `closeInstallationSetup()` | Closes it and restores layout margins |
 | `ATP()` | Opens the ATP test side panel |
 | `closeATP()` | Closes it and restores layout margins |
-| `ViewTelemetry()` | Opens Glimpse in a new tab |
+| `ViewTelemetry()` | Opens the **ATP Results** side panel (id `view-telemetry-panel`) with file choosers for IBIT, Sine Test, and Friction Test CSVs, plus metadata input fields |
+| `closeViewTelemetry()` | Closes the ATP Results panel and restores layout margins |
+
+**ATP Results panel metadata fields** (added to `vtPanel.innerHTML`, pre-filled/editable):
+- `#vt-gimbal-no` — Gimbal Number (text)
+- `#vt-operator` — Operator name (text)
+- `#vt-datetime` — Date/Time (`datetime-local`, pre-filled with current time on open)
+- `#vt-remarks` — Remarks (textarea)
+
+These values are read by `printAtpReport()` to populate the PDF cover page.
 
 **Layout margin management:** Every panel open/close function adjusts `marginLeft` on three elements together: `#explenation_text`, `#plot-area`, and `#resultsTable`.
 - Panel open → `720px` (350px main sidebar + 350px panel + 20px gap)
@@ -190,8 +216,8 @@ CSV columns saved by `saveDataToCSV`:
 | `joystickCmd(direction)` | Increments/decrements traverse or elevation by 1° |
 | `sendVelocity(v)` | Sends velocity to both axes; clamps to `MAX_VELOCITY` |
 | `setZeroAngles(axis)` | Sets current position as the zero angle for an axis |
-| `commutation(axis)` | Automated motor commutation with progress indicator |
-| `commutationStepByStep(axis)` | Step-by-step commutation using torque control |
+| `commutation(axis)` | Automated motor commutation with progress indicator; shows safety warning popup before starting |
+| `commutationStepByStep(axis)` | Step-by-step commutation using torque control; shows same safety warning (function exists but has no UI button — currently dead code) |
 | `playTune()` | Sends `R1[1]=8` — plays a melody on the gimbal |
 | `updateMovementStatus(msg, type)` | Updates the status bar text and color |
 | `validateMovementPrerequisites()` | Checks serial is connected and motor is on |
@@ -205,7 +231,7 @@ Key responsibilities:
 - Theme toggle (light/dark), persisted in `localStorage`
 - Emergency stop (`stopSignClick`) — sends stop command 5 times then turns motor off
 - `connectToggle()` — connects/disconnects serial and starts/stops live data
-- `motorToggle()` — enables/disables the motor drive
+- `motorToggle()` — **async**; shows a SweetAlert safety warning before enabling the motor drive; cancelling aborts the toggle
 - `startTorqueTest()` — runs the automated sweep test (cycle between min/max angle, record data, auto-save CSV)
 - `recordData()` — manual start/stop of data recording
 - `AnalyzeRecord()` — opens a file picker to load a previously saved CSV

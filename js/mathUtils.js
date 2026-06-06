@@ -15,7 +15,7 @@
  * @returns {Array} Derivative array
  */
 function diff(y, x) {
-  let Ts = 0.01;
+  const Ts = TELEMETRY_INTERVAL_MS / 1000;
   let d = [];
   for (let i = 1; i < y.length; i++) {
     d[i] = (Number(y[i]) - Number(y[i - 1])) / Ts;

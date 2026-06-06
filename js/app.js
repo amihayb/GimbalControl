@@ -138,7 +138,7 @@ async function connectToggle(button) {
  * Toggle motor on/off (UI-specific)
  * @param {HTMLElement} button - The motor toggle button element
  */
-function motorToggle(button) {
+async function motorToggle(button) {
   if (!serialPort) {
     button.checked = false;
     Swal.fire({
@@ -149,12 +149,25 @@ function motorToggle(button) {
     return;
   }
 
-  sendMsg("R1[3]=1\r");
-
   if (button.checked) {
+    const result = await Swal.fire({
+      title: 'Caution!',
+      text: 'Gimbal may move unexpectedly. Stay clear of moving parts. Do not place fingers or objects inside the mechanism.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Turn On',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d33'
+    });
+    if (!result.isConfirmed) {
+      button.checked = false;
+      return;
+    }
+    sendMsg("R1[3]=1\r");
     sendMsg('R1[1]=1\r');
     console.log('Motor ON!');
   } else {
+    sendMsg("R1[3]=1\r");
     sendMsg('R1[1]=0\r');
     console.log('Motor OFF!');
     // Stop any ongoing movement interval
@@ -162,7 +175,6 @@ function motorToggle(button) {
       clearInterval(intervalMove);
       intervalMove = null;
     }
-    
   }
 }
 

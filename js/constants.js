@@ -24,6 +24,7 @@ const ANGLE_CHANGE_THRESHOLD = 20;
 const MAX_ANGLE_CHANGE_FAILS = 10;
 const CURRENT_MIN = -10;
 const CURRENT_MAX = 10;
+const TELEMETRY_INTERVAL_MS = 20; // live-data polling interval in milliseconds
 const ANGLE_UPDATE_INTERVAL = 50; // milliseconds
 const MOVEMENT_INTERVAL = 200; // milliseconds
 const SERIAL_BAUD_RATE = 115200;

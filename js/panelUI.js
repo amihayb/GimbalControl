@@ -399,8 +399,22 @@ function ViewTelemetry() {
 
   vtPanel.innerHTML = `
     <div class="panel-header">
-      <h1>View Telemetry</h1>
+      <h1>ATP Results</h1>
       <button class="panel-close-btn" onclick="closeViewTelemetry()">×</button>
+    </div>
+
+    <div class="vt-meta-fields">
+      <label class="vt-meta-label">Gimbal Number</label>
+      <input type="text" id="vt-gimbal-no" class="vt-meta-input" placeholder="e.g. SN-0042">
+
+      <label class="vt-meta-label">Operator</label>
+      <input type="text" id="vt-operator" class="vt-meta-input" placeholder="Name">
+
+      <label class="vt-meta-label">Date / Time</label>
+      <input type="text" id="vt-datetime" class="vt-meta-input" placeholder="DD/MM/YYYY HH:MM">
+
+      <label class="vt-meta-label">Remarks</label>
+      <textarea id="vt-remarks" class="vt-meta-textarea" placeholder="Optional..."></textarea>
     </div>
 
     <hr>
@@ -443,6 +457,18 @@ function ViewTelemetry() {
   `;
 
   document.body.appendChild(vtPanel);
+
+  // Pre-fill datetime in DD/MM/YYYY HH:MM format
+  const dtInput = document.getElementById('vt-datetime');
+  if (dtInput) {
+    const now  = new Date();
+    const dd   = String(now.getDate()).padStart(2, '0');
+    const mm   = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const hh   = String(now.getHours()).padStart(2, '0');
+    const min  = String(now.getMinutes()).padStart(2, '0');
+    dtInput.value = `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  }
 
   // Wire each file input: update the filename label, enable the Show Results button,
   // then hand the file to the existing readFile loader which routes to handleAtpCsvLoaded.

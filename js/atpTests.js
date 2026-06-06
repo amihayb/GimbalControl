@@ -70,8 +70,19 @@ function ibitTestPassed() {
   return checks.every(([val, crit]) => Math.abs(val) <= crit);
 }
 
+function sineCurrentRange(arr) {
+  let mn = arr[0], mx = arr[0];
+  for (let i = 1; i < arr.length; i++) {
+    if (arr[i] < mn) mn = arr[i];
+    if (arr[i] > mx) mx = arr[i];
+  }
+  return mx - mn;
+}
+
 function sineTestPassed() {
-  return maxAbs(rows.Tr_pos_err) <= 1 && maxAbs(rows.El_pos_err) <= 1;
+  return maxAbs(rows.Tr_pos_err) <= 1 && maxAbs(rows.El_pos_err) <= 1
+      && sineCurrentRange(rows.Tr_current) < 1
+      && sineCurrentRange(rows.El_current) < 1;
 }
 
 function frictionTestPassed(tr, el) {
@@ -87,23 +98,23 @@ function showAtpPassFailSwal(testName, passed, detail) {
   });
 }
 
-function finishIbitTableResults() {
+function finishIbitTableResults(silent = false) {
   const passed = ibitTestPassed();
-  showAtpPassFailSwal('IBIT', passed, passed
+  if (!silent) showAtpPassFailSwal('IBIT', passed, passed
     ? 'All sector and velocity checks within limits.'
     : 'One or more IBIT table values exceeded limits.');
   showIBITResults();
 }
 
-function finishSineTestResults(detail) {
+function finishSineTestResults(detail, silent = false) {
   const passed = sineTestPassed();
-  showAtpPassFailSwal('Sine Test', passed, detail || (passed
-    ? 'Position error within ±1° on both axes.'
-    : `Peak error: Tr=${maxAbs(rows.Tr_pos_err).toFixed(3)}°, El=${maxAbs(rows.El_pos_err).toFixed(3)}°`));
+  if (!silent) showAtpPassFailSwal('Sine Test', passed, detail || (passed
+    ? 'Position error within ±1° and current range within 1 A on both axes.'
+    : `Peak pos error: Tr=${maxAbs(rows.Tr_pos_err).toFixed(3)}°, El=${maxAbs(rows.El_pos_err).toFixed(3)}° | Current range: Tr=${sineCurrentRange(rows.Tr_current).toFixed(3)} A, El=${sineCurrentRange(rows.El_current).toFixed(3)} A`));
   showSineTestResults();
 }
 
-function finishFrictionTestResults() {
+function finishFrictionTestResults(silent = false) {
   let tr, el;
   try {
     tr = computeFrictionAnalysis(rows.Tr_angle, rows.Tr_current);
@@ -114,7 +125,7 @@ function finishFrictionTestResults() {
   }
   const passed = frictionTestPassed(tr, el);
   const worst = Math.max(tr.meanDiffFwd, tr.meanDiffBwd, el.meanDiffFwd, el.meanDiffBwd);
-  showAtpPassFailSwal('Friction Test', passed, passed
+  if (!silent) showAtpPassFailSwal('Friction Test', passed, passed
     ? 'Mean friction deviation ≤ 1 A on all branches.'
     : `Worst mean deviation: ${worst.toFixed(4)} A (limit 1 A).`);
   showFrictionTestResults(tr, el);
@@ -251,10 +262,17 @@ function showSineTestResults(plotId, tableId) {
 
   BP.drawTable(tableId, [
     {
-      parameter: 'Position Error',
+      parameter: 'Position Error [deg]',
       value1: maxAbs(rows.Tr_pos_err),
       value2: maxAbs(rows.El_pos_err),
       successCriteria: 1,
+    },
+    {
+      parameter: 'Current Range [A]',
+      value1: sineCurrentRange(rows.Tr_current),
+      value2: sineCurrentRange(rows.El_current),
+      successCriteria: 1,
+      successMethod: 'smaller',
     },
   ]);
 }
@@ -350,13 +368,13 @@ function showFrictionTestResults(tr, el, plotId, tableId) {
 function handleAtpCsvLoaded(fileName) {
   const base = fileName.replace(/\.csv$/i, '');
   if (base.startsWith('FrictionTest')) {
-    finishFrictionTestResults();
+    finishFrictionTestResults(true);
     vtMarkTestLoaded('friction');
   } else if (base.startsWith('IBIT')) {
-    finishIbitTableResults();
+    finishIbitTableResults(true);
     vtMarkTestLoaded('ibit');
   } else if (base.startsWith('SineTest')) {
-    finishSineTestResults();
+    finishSineTestResults(undefined, true);
     vtMarkTestLoaded('sine');
   } else if (typeof showTorqueTest === 'function') {
     showTorqueTest();
@@ -670,31 +688,65 @@ function vtShowFrictionResults() {
 async function printAtpReport() {
   if (!vtSavedRows.ibit || !vtSavedRows.sine || !vtSavedRows.friction) return;
 
-  const { value: formValues, isConfirmed } = await Swal.fire({
-    title: 'ATP Report Details',
-    html: `
-      <label style="display:block;text-align:left;margin-bottom:4px;font-weight:bold;">Gimbal Number</label>
-      <input id="swal-gimbal-no" class="swal2-input" placeholder="e.g. SN-0042">
-      <label style="display:block;text-align:left;margin-top:12px;margin-bottom:4px;font-weight:bold;">Remarks</label>
-      <textarea id="swal-remarks" class="swal2-textarea" placeholder="Optional remarks..."></textarea>
-    `,
-    focusConfirm: false,
-    showCancelButton: true,
-    confirmButtonText: 'Print to PDF',
-    preConfirm: () => ({
-      gimbalNo: document.getElementById('swal-gimbal-no').value.trim() || '—',
-      remarks:  document.getElementById('swal-remarks').value.trim()  || '—',
-    }),
-  });
+  // Read metadata from the panel fields
+  const gimbalRaw = document.getElementById('vt-gimbal-no')?.value.trim() || '';
+  const operator  = document.getElementById('vt-operator')?.value.trim()  || '—';
+  const remarks   = document.getElementById('vt-remarks')?.value.trim()   || '—';
+  const rawDt     = document.getElementById('vt-datetime')?.value.trim();
 
-  if (!isConfirmed) return;
+  // Format gimbal number: pure digits get zero-padded to 3 places and prefixed with "SN: "
+  function formatGimbalNo(raw) {
+    if (!raw) return '—';
+    if (/^\d+$/.test(raw)) return 'SN: ' + raw.padStart(4, '0');
+    return raw;
+  }
+  const gimbalNo = formatGimbalNo(gimbalRaw);
+
+  // Parse the text field value (DD/MM/YYYY HH:MM) into a Date
+  function parsePanelDate(str) {
+    const m = str && str.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if (!m) return new Date();
+    return new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0));
+  }
+  const dateObj  = parsePanelDate(rawDt);
+
+  // DD/MM/YYYY HH:MM for the metadata table
+  const dateTime = rawDt || (() => {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  })();
+
+  // "Month D, YYYY" for the page footer
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const footerDate = `${MONTHS[dateObj.getMonth()]} ${dateObj.getDate()}, ${dateObj.getFullYear()}`;
 
   Swal.fire({
-    title: 'Building Report…',
+    title: 'Building Report\u2026',
     allowOutsideClick: false,
     showConfirmButton: false,
     didOpen: () => Swal.showLoading(),
   });
+
+  // Use the absolute .src already loaded in the DOM — works on both http:// and file://.
+  // No fetch needed; the new window shares the same origin so can load these URLs directly.
+  const rafLogoUrl  = document.querySelector('img[src*="RafLogo"]')?.src  || '';
+  const blauLogoUrl = document.querySelector('img[src*="logo-title"]')?.src || '';
+
+  // Compute pass/fail for summary page using saved rows
+  const prevRowsForSummary = rows;
+  rows = vtSavedRows.ibit;
+  const ibitOk = ibitTestPassed();
+  rows = vtSavedRows.sine;
+  const sineOk = sineTestPassed();
+  rows = vtSavedRows.friction;
+  let frictionOk = false;
+  try {
+    const trFr = computeFrictionAnalysis(rows.Tr_angle, rows.Tr_current);
+    const elFr = computeFrictionAnalysis(rows.El_angle, rows.El_current);
+    frictionOk = frictionTestPassed(trFr, elFr);
+  } catch (e) { /* leave false */ }
+  rows = prevRowsForSummary;
+  const allOk = ibitOk && sineOk && frictionOk;
 
   // Off-screen container: fixed position so Plotly gets real pixel dimensions.
   const tempContainer = document.createElement('div');
@@ -703,15 +755,18 @@ async function printAtpReport() {
 
   const testDefs = [
     {
-      label: 'IBIT',
+      label: 'IBIT \u2014 Built-In Test',
+      description: 'The Built-In Test (IBIT) verifies the gimbal\u2019s mechanical and control integrity across its full movement range. During the test, the gimbal is commanded to traverse the entire movement sector \u2014 spanning \u00b1200\u00b0 in traverse and \u221215\u00b0 to +65\u00b0 in elevation \u2014 to confirm that the system can reach and hold positions throughout the operational envelope. Position error, velocity, and motor current are recorded continuously. The test passes when the peak position error remains within \u00b11\u00b0 throughout the sweep and motor current stays within operating limits.',
       render(pId, tId) { rows = vtSavedRows.ibit; showIBITResults(pId, tId); },
     },
     {
-      label: 'Sine Test',
+      label: 'Sine Test \u2014 Dynamic Tracking',
+      description: 'The Sine Test evaluates the gimbal\u2019s dynamic tracking performance under sinusoidal motion commands. The system is driven with a continuous sine-wave profile on both the traverse and elevation axes simultaneously, at a randomised operating point. The test passes when the peak position error on both axes does not exceed \u00b11\u00b0, and the motor current range (max \u2212 min) on each axis remains below 1\u00a0A, throughout the manoeuvre.',
       render(pId, tId) { rows = vtSavedRows.sine; showSineTestResults(pId, tId); },
     },
     {
-      label: 'Friction Test',
+      label: 'Friction Test \u2014 Mechanical Resistance',
+      description: 'The Friction Test characterises the mechanical friction of the gimbal by performing a slow, constant-velocity sweep from the bottom-left to the top-right corner of the operating envelope and back. Motor current is recorded throughout both legs of the sweep. The test analyses the mean current difference between the forward and reverse directions on each axis; the test passes when this difference does not exceed 1\u00a0A on either axis, indicating balanced and acceptable friction levels.',
       render(pId, tId) {
         rows = vtSavedRows.friction;
         const trFr = computeFrictionAnalysis(rows.Tr_angle, rows.Tr_current);
@@ -726,7 +781,7 @@ async function printAtpReport() {
 
   try {
     for (let i = 0; i < testDefs.length; i++) {
-      const { label, render } = testDefs[i];
+      const { label, description, render } = testDefs[i];
 
       // Fresh divs for each test so IDs never clash
       tempContainer.innerHTML = '';
@@ -748,6 +803,32 @@ async function printAtpReport() {
       let plotCapture = '<p style="color:red;">(plot render failed)</p>';
       try {
         if (window.Plotly && typeof window.Plotly.toImage === 'function') {
+          // Force full white/light theme before capture regardless of app theme.
+          // Must update backgrounds, all axis colours, legend, annotations, and global font.
+          const whiteUpdate = {
+            paper_bgcolor: 'white',
+            plot_bgcolor:  'white',
+            font:          { color: '#333' },
+            'legend.bgcolor':     'white',
+            'legend.bordercolor': '#ccc',
+            'legend.font.color':  '#333',
+          };
+          const existingLayout = plotDiv.layout || {};
+          Object.keys(existingLayout).forEach(key => {
+            if (/^[xy]axis\d*$/.test(key)) {
+              whiteUpdate[`${key}.tickfont.color`]      = '#333';
+              whiteUpdate[`${key}.title.font.color`]    = '#333';
+              whiteUpdate[`${key}.linecolor`]           = '#bbb';
+              whiteUpdate[`${key}.zerolinecolor`]       = '#bbb';
+              whiteUpdate[`${key}.gridcolor`]           = '#e5e5e5';
+            }
+          });
+          if (Array.isArray(existingLayout.annotations)) {
+            existingLayout.annotations.forEach((_, idx) => {
+              whiteUpdate[`annotations[${idx}].font.color`] = '#333';
+            });
+          }
+          await window.Plotly.relayout(plotDiv, whiteUpdate);
           const dataUrl = await window.Plotly.toImage(plotDiv, { format: 'png', width: 900, height: 420 });
           plotCapture = `<img src="${dataUrl}" style="width:100%;display:block;" alt="${label} plot">`;
         } else {
@@ -761,7 +842,7 @@ async function printAtpReport() {
             clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
             clone.setAttribute('width',  '100%');
             clone.setAttribute('height', '380');
-            clone.style.cssText = 'display:block;';
+            clone.style.cssText = 'display:block;background:white;';
             plotCapture = clone.outerHTML;
           }
         }
@@ -769,7 +850,7 @@ async function printAtpReport() {
         console.error('Plot capture failed:', e);
       }
 
-      capturedResults.push({ label, plotCapture, tableHTML: tableDiv.innerHTML });
+      capturedResults.push({ label, description, plotCapture, tableHTML: tableDiv.innerHTML });
     }
   } finally {
     rows = prevRows;
@@ -777,49 +858,159 @@ async function printAtpReport() {
     Swal.close();
   }
 
-  // Build a self-contained report page
-  const dateStr = new Date().toLocaleDateString();
-  const sections = capturedResults.map(({ label, plotCapture, tableHTML }) => `
-    <section>
+  // Summary table rows
+  const summaryRows = [
+    { name: 'IBIT',         ok: ibitOk },
+    { name: 'Sine Test',    ok: sineOk },
+    { name: 'Friction Test',ok: frictionOk },
+  ].map(({ name, ok }) => `
+    <tr>
+      <td>${name}</td>
+      <td class="${ok ? 'pass' : 'fail'}">${ok ? 'PASS \u2713' : 'FAIL \u2717'}</td>
+    </tr>`).join('');
+
+  // Each test section becomes its own tbody row so the thead logo repeats on every page
+  const testRows = capturedResults.map(({ label, description, plotCapture, tableHTML }) => `
+    <tr class="page-break"><td class="content-cell">
       <h2>${label}</h2>
+      ${description ? `<p class="test-description">${description}</p>` : ''}
       <div class="plot-wrap">${plotCapture}</div>
       <div class="table-wrap">${tableHTML}</div>
-    </section>`).join('');
+    </td></tr>`).join('');
+
+  const headerCellHTML = `
+    <div class="report-header">
+      <div class="header-logos">
+        ${rafLogoUrl  ? `<img src="${rafLogoUrl}"  class="logo" alt="Rafael">` : ''}
+        ${blauLogoUrl ? `<img src="${blauLogoUrl}" class="logo" alt="Blau Robotics">` : ''}
+      </div>
+      <div class="header-title">Acceptance Test Procedure Report</div>
+    </div>`;
 
   const reportHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>ATP Report \u2014 ${formValues.gimbalNo}</title>
+<title>ATP Report \u2014 ${gimbalNo}</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
-  body   { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #000; font-size: 13px; }
-  h1     { font-size: 17px; margin: 0 0 10px; border-bottom: 2px solid #333; padding-bottom: 6px; }
-  h2     { font-size: 14px; margin: 0 0 6px; border-bottom: 1px solid #bbb; padding-bottom: 4px; }
-  table.meta  { border-collapse: collapse; margin-bottom: 18px; }
-  table.meta td             { padding: 2px 12px 2px 0; vertical-align: top; }
-  table.meta td:first-child { font-weight: bold; white-space: nowrap; }
-  section     { margin-bottom: 32px; page-break-inside: avoid; }
-  /* plot-wrap clips any SVG overflow so it never bleeds into the table below */
-  .plot-wrap  { width: 100%; overflow: hidden; line-height: 0; }
+  body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #000; font-size: 13px; background: #fff; }
+
+  /* ---- Page layout table — thead/tfoot repeat on every printed page ---- */
+  .page-layout { width: 100%; border-collapse: collapse; }
+  .page-layout thead td { padding-bottom: 22px; }
+  .page-layout tfoot td { padding-top: 14px; border-top: 1px solid #3276a0; font-size: 10px; color: #666; }
+  .content-cell { vertical-align: top; padding-bottom: 28px; }
+  tr.page-break { page-break-before: always; }
+
+  /* ---- Header with logos ---- */
+  .report-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0 10px;
+    border-bottom: none;
+  }
+  .header-logos {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 14px;
+  }
+  .logo { height: 32px; width: auto; }
+  .header-title {
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    color: #333;
+    text-decoration: underline;
+  }
+
+  /* ---- Metadata box ---- */
+  .meta-box {
+    border: 1px solid #3276a0;
+    border-radius: 4px;
+    background: #f4f8fb;
+    padding: 12px 16px;
+    margin-bottom: 32px;
+    display: inline-block;
+    min-width: 340px;
+  }
+  table.meta { border-collapse: collapse; }
+  table.meta td { padding: 3px 16px 3px 0; vertical-align: top; }
+  table.meta td:first-child { font-weight: bold; white-space: nowrap; color: #3276a0; }
+
+  /* ---- Summary section ---- */
+  .summary-section { margin-bottom: 36px; }
+  .summary-section h2 { font-size: 15px; margin: 0 0 14px; border-bottom: 1px solid #bbb; padding-bottom: 5px; }
+  table.summary-table { border-collapse: collapse; width: 320px; }
+  table.summary-table th, table.summary-table td { border: 1px solid #bbb; padding: 7px 18px; text-align: center; }
+  table.summary-table thead th { background: #f2f2f2; font-weight: bold; }
+  .pass { color: #1a7a35; font-weight: bold; }
+  .fail { color: #c0392b; font-weight: bold; }
+  .overall-result {
+    margin-top: 16px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .overall-result.pass { background: #e8f5e9; border: 1px solid #1a7a35; }
+  .overall-result.fail { background: #fdecea; border: 1px solid #c0392b; }
+
+  /* ---- Test detail sections ---- */
+  h2 { font-size: 14px; margin: 0 0 10px; border-bottom: 1px solid #bbb; padding-bottom: 5px; }
+  .test-description { font-size: 12px; color: #444; line-height: 1.6; margin: 0 0 14px; }
+  .plot-wrap { width: 100%; overflow: hidden; line-height: 0; background: #fff; margin-bottom: 8px; }
   .plot-wrap img { width: 100%; display: block; }
-  .plot-wrap svg { width: 100%; height: 380px; display: block; }
-  .table-wrap { margin-top: 12px; clear: both; }
+  .plot-wrap svg { width: 100%; height: 380px; display: block; background: #fff; }
+  .table-wrap { margin-top: 14px; clear: both; }
   .table-wrap table { border-collapse: collapse; width: 100%; }
-  .table-wrap th, .table-wrap td { border: 1px solid #bbb; padding: 5px 12px; text-align: center; }
+  .table-wrap th, .table-wrap td { border: 1px solid #bbb; padding: 6px 12px; text-align: center; }
   .table-wrap thead th { background: #f2f2f2; font-weight: bold; }
-  @page  { margin: 12mm; }
-  @media print { body { padding: 0; } }
+
+  @page {
+    size: A4;
+    margin: 14mm 12mm 20mm;
+    @bottom-left   { content: "${footerDate}"; font-size: 10px; color: #666; font-family: Arial, sans-serif; }
+    @bottom-center { content: "Lynx ATP \u2014 ${gimbalNo}"; font-size: 10px; color: #666; font-family: Arial, sans-serif; }
+    @bottom-right  { content: "Page " counter(page); font-size: 10px; color: #666; font-family: Arial, sans-serif; }
+  }
 </style>
 </head>
 <body>
-<h1>GimbalControl \u2014 ATP Report</h1>
-<table class="meta">
-  <tr><td>Gimbal Number</td><td>${formValues.gimbalNo}</td></tr>
-  <tr><td>Date</td><td>${dateStr}</td></tr>
-  <tr><td>Remarks</td><td>${formValues.remarks}</td></tr>
+<table class="page-layout">
+  <thead>
+    <tr><td>${headerCellHTML}</td></tr>
+  </thead>
+  <tbody>
+    <!-- Page 1: metadata + summary -->
+    <tr><td class="content-cell">
+      <div class="meta-box">
+        <table class="meta">
+          <tr><td>Gimbal Number</td><td>${gimbalNo}</td></tr>
+          <tr><td>Operator</td><td>${operator}</td></tr>
+          <tr><td>Date / Time</td><td>${dateTime}</td></tr>
+          <tr><td>Remarks</td><td style="white-space:pre-wrap;">${remarks}</td></tr>
+        </table>
+      </div>
+      <div class="summary-section">
+        <h2>Test Summary</h2>
+        <table class="summary-table">
+          <thead><tr><th>Test</th><th>Result</th></tr></thead>
+          <tbody>${summaryRows}</tbody>
+        </table>
+        <div class="overall-result ${allOk ? 'pass' : 'fail'}">
+          Overall: ${allOk ? 'ALL TESTS PASSED \u2713' : 'ONE OR MORE TESTS FAILED \u2717'}
+        </div>
+      </div>
+    </td></tr>
+    <!-- Pages 2+: one row per test, each starting on a new page -->
+    ${testRows}
+  </tbody>
 </table>
-${sections}
 <script>
   window.addEventListener('load', function () {
     setTimeout(function () { window.print(); }, 300);

@@ -611,6 +611,37 @@ input[type="text"] {
 
 /* ==================== View Telemetry Panel ====================  */
 
+.vt-meta-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 6px;
+}
+
+.vt-meta-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.vt-meta-input,
+.vt-meta-textarea {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-input-bg, var(--color-bg-secondary));
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+
+.vt-meta-textarea {
+  height: 60px;
+  resize: vertical;
+}
+
 .vt-test-section {
   margin: 8px 0 4px;
 }
@@ -643,15 +674,17 @@ input[type="text"] {
   pointer-events: none;
 }
 
-/* Print to PDF button — full-width, action colour */
+/* Print to PDF button — action colour */
 .vt-print-btn {
   display: block;
-  width: calc(100% - 20px);
+  width: fit-content;
+  min-width: 160px;
   text-align: center;
   background-color: var(--color-btn-action) !important;
   color: #fff !important;
   border-radius: 8px;
-  margin: 4px 0;
+  margin: 4px auto;
+  padding: 6px 24px;
 }
 
 .vt-print-btn:hover {

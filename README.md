@@ -13,6 +13,8 @@ A browser-based control and test tool for the **Lynx gimbal**. Connect over USB,
 - **Movement control** — go to angles, preset positions, joystick nudging, velocity mode, and demo scenarios
 - **Installation setup** — commutation, zero-angle setup, and related procedures
 - **Acceptance tests (ATP)** — IBIT, sine test, friction test, and automated torque sweep
+- **ATP Results panel** — load saved test CSVs, view results, and print a professional PDF report with logo header, pass/fail summary, and white-background plots
+- **Safety warnings** — confirmation dialogs before motor-on and before commutation
 - **Data recording** — save and load CSV files; drag-and-drop import
 - **Charts** — Plotly-based plots for test results (including IBIT 2×2 grid via BlauPlot)
 - **PWA** — installable as a desktop app; works offline after first load

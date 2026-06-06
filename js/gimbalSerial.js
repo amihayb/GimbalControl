@@ -385,7 +385,7 @@ async function showLiveData(state) {
       await sendMsg('eo=0;'); // Turn off echo
       intervalShowLiveData = setInterval(() => {
         updateLiveData();
-      }, 20); // ms
+      }, TELEMETRY_INTERVAL_MS);
   }
 }
 
