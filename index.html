@@ -116,13 +116,6 @@
       </table>
     </div>
     <br><hr><br>
-    <div>
-      <a href="#" class="button active" id="movement-control-button" title="Movement control interface" onclick="MovementControl();">Movement Control</a>
-      <a href="#" class="button" title="Installation setup procedures" onclick="InstallationSetup();">Installation Setup</a>
-      <a href="#" class="button" title="Acceptance Test Procedure" onclick="ATP();">Run ATP Tests</a>
-      <a href="#" class="button" title="View telemetry data" onclick="ViewTelemetry();">ATP Results</a>
-    </div>
-    <br><hr><br>
     <div class="target-control" title="Movement status">
       <label>Status</label>
       <div id="movementStatus" style="font-size: 12px; color: var(--color-text-muted); text-align: center;">Ready for commands</div>
@@ -132,6 +125,13 @@
         </div>
         <div id="commutationProgressLabel" style="font-size:11px; color:var(--color-text-muted); text-align:center; margin-top:2px;">0%</div>
       </div>
+    </div>
+    <br><hr><br>
+    <div>
+      <a href="#" class="button active" id="movement-control-button" title="Movement control interface" onclick="MovementControl();">Movement Control</a>
+      <a href="#" class="button" title="Installation setup procedures" onclick="InstallationSetup();">Installation Setup</a>
+      <a href="#" class="button" title="Acceptance Test Procedure" onclick="ATP();">Run ATP Tests</a>
+      <a href="#" class="button" title="View telemetry data" onclick="ViewTelemetry();">ATP Results</a>
     </div>
   </div>
   <div id="drop-zone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
