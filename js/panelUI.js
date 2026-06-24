@@ -422,10 +422,14 @@ function ViewTelemetry() {
     <div class="vt-test-section">
       <input type="file" id="vt-file-ibit" accept=".csv" style="display:none">
       <div class="vt-row">
-        <a class="button vt-choose-btn" onclick="document.getElementById('vt-file-ibit').click()">Choose File</a>
+        <span class="vt-icon-btn vt-choose-btn" onclick="document.getElementById('vt-file-ibit').click()" title="Load file">
+          <i class="fa fa-folder-open"></i>
+        </span>
         <span id="vt-filename-ibit" class="vt-filename-label">No file chosen</span>
+        <span class="vt-icon-btn vt-show-btn vt-disabled" id="vt-show-ibit" onclick="vtShowIbitResults()" title="Show Results">
+          <i class="fa fa-bar-chart"></i>
+        </span>
       </div>
-      <a class="button vt-show-btn vt-disabled" id="vt-show-ibit" onclick="vtShowIbitResults()">Show Results</a>
     </div>
 
     <hr>
@@ -433,10 +437,14 @@ function ViewTelemetry() {
     <div class="vt-test-section">
       <input type="file" id="vt-file-sine" accept=".csv" style="display:none">
       <div class="vt-row">
-        <a class="button vt-choose-btn" onclick="document.getElementById('vt-file-sine').click()">Choose File</a>
+        <span class="vt-icon-btn vt-choose-btn" onclick="document.getElementById('vt-file-sine').click()" title="Load file">
+          <i class="fa fa-folder-open"></i>
+        </span>
         <span id="vt-filename-sine" class="vt-filename-label">No file chosen</span>
+        <span class="vt-icon-btn vt-show-btn vt-disabled" id="vt-show-sine" onclick="vtShowSineResults()" title="Show Results">
+          <i class="fa fa-bar-chart"></i>
+        </span>
       </div>
-      <a class="button vt-show-btn vt-disabled" id="vt-show-sine" onclick="vtShowSineResults()">Show Results</a>
     </div>
 
     <hr>
@@ -444,10 +452,14 @@ function ViewTelemetry() {
     <div class="vt-test-section">
       <input type="file" id="vt-file-friction" accept=".csv" style="display:none">
       <div class="vt-row">
-        <a class="button vt-choose-btn" onclick="document.getElementById('vt-file-friction').click()">Choose File</a>
+        <span class="vt-icon-btn vt-choose-btn" onclick="document.getElementById('vt-file-friction').click()" title="Load file">
+          <i class="fa fa-folder-open"></i>
+        </span>
         <span id="vt-filename-friction" class="vt-filename-label">No file chosen</span>
+        <span class="vt-icon-btn vt-show-btn vt-disabled" id="vt-show-friction" onclick="vtShowFrictionResults()" title="Show Results">
+          <i class="fa fa-bar-chart"></i>
+        </span>
       </div>
-      <a class="button vt-show-btn vt-disabled" id="vt-show-friction" onclick="vtShowFrictionResults()">Show Results</a>
     </div>
 
     <hr>

@@ -643,34 +643,49 @@ input[type="text"] {
 }
 
 .vt-test-section {
-  margin: 8px 0 4px;
+  margin: 4px 0 14px;
 }
 
 .vt-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+/* Shared style for the folder and chart icon buttons */
+.vt-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background-color: var(--color-btn-active);
+  color: var(--color-text-active);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.vt-icon-btn:hover {
+  background-color: var(--color-btn-hover-deep);
+  color: var(--color-text-active);
 }
 
 .vt-filename-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-muted);
-  word-break: break-all;
   flex: 1;
-}
-
-.vt-choose-btn {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* "Show Results" buttons are dimmed until a file is chosen */
-.vt-show-btn {
-  margin-top: 4px;
-}
-
+/* "Show Results" icon is dimmed until a file is chosen */
 .vt-show-btn.vt-disabled {
-  opacity: 0.35;
+  opacity: 0.25;
   pointer-events: none;
 }
 
@@ -689,6 +704,36 @@ input[type="text"] {
 
 .vt-print-btn:hover {
   background-color: var(--color-btn-action-hover) !important;
+}
+
+/* ==================== Scrollbars ====================  */
+/*
+ * Style all scrollable areas (sidebar, panels, body) to match the app theme.
+ * The ::-webkit-scrollbar rules cover Chrome/Edge.
+ * The scrollbar-* properties cover Firefox.
+ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-btn-active) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-btn-active);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-btn-hover-deep);
 }
 
 /* ==================== Print Media ====================  */
