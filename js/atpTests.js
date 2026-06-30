@@ -640,12 +640,12 @@ function resetVtLoadedTests() {
   vtSavedRows   = { ibit: null,  sine: null,  friction: null };
 }
 
-/** Show the Print to PDF button when all 3 test files have been loaded. */
+/** Show the Print to PDF button when at least one test file has been loaded. */
 function checkAllTestsLoaded() {
   const btn = document.getElementById('btn-print-pdf');
   if (!btn) return;
-  const allLoaded = vtLoadedTests.ibit && vtLoadedTests.sine && vtLoadedTests.friction;
-  btn.style.display = allLoaded ? '' : 'none';
+  const anyLoaded = vtLoadedTests.ibit || vtLoadedTests.sine || vtLoadedTests.friction;
+  btn.style.display = anyLoaded ? '' : 'none';
 }
 
 /** Re-show IBIT results from the saved VT snapshot. */
@@ -686,7 +686,7 @@ function vtShowFrictionResults() {
  * the browser a clean, standalone page to print.
  */
 async function printAtpReport() {
-  if (!vtSavedRows.ibit || !vtSavedRows.sine || !vtSavedRows.friction) return;
+  if (!vtSavedRows.ibit && !vtSavedRows.sine && !vtSavedRows.friction) return;
 
   // Read metadata from the panel fields
   const gimbalRaw = document.getElementById('vt-gimbal-no')?.value.trim() || '';
@@ -732,21 +732,32 @@ async function printAtpReport() {
   const rafLogoUrl  = document.querySelector('img[src*="RafLogo"]')?.src  || '';
   const blauLogoUrl = document.querySelector('img[src*="logo-title"]')?.src || '';
 
-  // Compute pass/fail for summary page using saved rows
+  // Compute pass/fail for summary page using saved rows.
+  // Tests that were not loaded get null (not false) so we can distinguish "not loaded" from "failed".
   const prevRowsForSummary = rows;
-  rows = vtSavedRows.ibit;
-  const ibitOk = ibitTestPassed();
-  rows = vtSavedRows.sine;
-  const sineOk = sineTestPassed();
-  rows = vtSavedRows.friction;
-  let frictionOk = false;
-  try {
-    const trFr = computeFrictionAnalysis(rows.Tr_angle, rows.Tr_current);
-    const elFr = computeFrictionAnalysis(rows.El_angle, rows.El_current);
-    frictionOk = frictionTestPassed(trFr, elFr);
-  } catch (e) { /* leave false */ }
+  let ibitOk = null;
+  if (vtSavedRows.ibit) {
+    rows = vtSavedRows.ibit;
+    ibitOk = ibitTestPassed();
+  }
+  let sineOk = null;
+  if (vtSavedRows.sine) {
+    rows = vtSavedRows.sine;
+    sineOk = sineTestPassed();
+  }
+  let frictionOk = null;
+  if (vtSavedRows.friction) {
+    rows = vtSavedRows.friction;
+    try {
+      const trFr = computeFrictionAnalysis(rows.Tr_angle, rows.Tr_current);
+      const elFr = computeFrictionAnalysis(rows.El_angle, rows.El_current);
+      frictionOk = frictionTestPassed(trFr, elFr);
+    } catch (e) { frictionOk = false; }
+  }
   rows = prevRowsForSummary;
-  const allOk = ibitOk && sineOk && frictionOk;
+  const loadedCount = [ibitOk, sineOk, frictionOk].filter(v => v !== null).length;
+  const allLoaded   = loadedCount === 3;
+  const allOk       = allLoaded && ibitOk && sineOk && frictionOk;
 
   // Off-screen container: fixed position so Plotly gets real pixel dimensions.
   const tempContainer = document.createElement('div');
@@ -755,16 +766,19 @@ async function printAtpReport() {
 
   const testDefs = [
     {
+      key: 'ibit',
       label: 'IBIT \u2014 Built-In Test',
       description: 'The Built-In Test (IBIT) verifies the gimbal\u2019s mechanical and control integrity across its full movement range. During the test, the gimbal is commanded to traverse the entire movement sector \u2014 spanning \u00b1200\u00b0 in traverse and \u221215\u00b0 to +65\u00b0 in elevation \u2014 to confirm that the system can reach and hold positions throughout the operational envelope. Position error, velocity, and motor current are recorded continuously. The test passes when the peak position error remains within \u00b11\u00b0 throughout the sweep and motor current stays within operating limits.',
       render(pId, tId) { rows = vtSavedRows.ibit; showIBITResults(pId, tId); },
     },
     {
+      key: 'sine',
       label: 'Sine Test \u2014 Dynamic Tracking',
       description: 'The Sine Test evaluates the gimbal\u2019s dynamic tracking performance under sinusoidal motion commands. The system is driven with a continuous sine-wave profile on both the traverse and elevation axes simultaneously, at a randomised operating point. The test passes when the peak position error on both axes does not exceed \u00b11\u00b0, and the motor current range (max \u2212 min) on each axis remains below 1\u00a0A, throughout the manoeuvre.',
       render(pId, tId) { rows = vtSavedRows.sine; showSineTestResults(pId, tId); },
     },
     {
+      key: 'friction',
       label: 'Friction Test \u2014 Mechanical Resistance',
       description: 'The Friction Test characterises the mechanical friction of the gimbal by performing a slow, constant-velocity sweep from the bottom-left to the top-right corner of the operating envelope and back. Motor current is recorded throughout both legs of the sweep. The test analyses the mean current difference between the forward and reverse directions on each axis; the test passes when this difference does not exceed 1\u00a0A on either axis, indicating balanced and acceptable friction levels.',
       render(pId, tId) {
@@ -774,7 +788,7 @@ async function printAtpReport() {
         showFrictionTestResults(trFr, elFr, pId, tId);
       },
     },
-  ];
+  ].filter(def => vtSavedRows[def.key] !== null);
 
   const capturedResults = [];
   const prevRows = rows;
@@ -858,12 +872,13 @@ async function printAtpReport() {
     Swal.close();
   }
 
-  // Summary table rows
+  // Summary table rows — only include tests that were actually loaded
   const summaryRows = [
-    { name: 'IBIT',         ok: ibitOk },
-    { name: 'Sine Test',    ok: sineOk },
-    { name: 'Friction Test',ok: frictionOk },
-  ].map(({ name, ok }) => `
+    { name: 'IBIT',          ok: ibitOk },
+    { name: 'Sine Test',     ok: sineOk },
+    { name: 'Friction Test', ok: frictionOk },
+  ].filter(({ ok }) => ok !== null)
+   .map(({ name, ok }) => `
     <tr>
       <td>${name}</td>
       <td class="${ok ? 'pass' : 'fail'}">${ok ? 'PASS \u2713' : 'FAIL \u2717'}</td>
@@ -959,6 +974,7 @@ async function printAtpReport() {
   }
   .overall-result.pass { background: #e8f5e9; border: 1px solid #1a7a35; }
   .overall-result.fail { background: #fdecea; border: 1px solid #c0392b; }
+  .overall-result.partial { background: #fdf6e3; border: 1px solid #c9a227; color: #7a5c00; }
 
   /* ---- Test detail sections ---- */
   h2 { font-size: 14px; margin: 0 0 10px; border-bottom: 1px solid #bbb; padding-bottom: 5px; }
@@ -1002,8 +1018,8 @@ async function printAtpReport() {
           <thead><tr><th>Test</th><th>Result</th></tr></thead>
           <tbody>${summaryRows}</tbody>
         </table>
-        <div class="overall-result ${allOk ? 'pass' : 'fail'}">
-          Overall: ${allOk ? 'ALL TESTS PASSED \u2713' : 'ONE OR MORE TESTS FAILED \u2717'}
+        <div class="overall-result ${allLoaded ? (allOk ? 'pass' : 'fail') : 'partial'}">
+          Overall: ${allLoaded ? (allOk ? 'ALL TESTS PASSED \u2713' : 'ONE OR MORE TESTS FAILED \u2717') : `Partial Report \u2014 ${loadedCount} of 3 tests loaded`}
         </div>
       </div>
     </td></tr>
