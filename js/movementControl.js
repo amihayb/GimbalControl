@@ -484,6 +484,67 @@ async function readCommutationAngles() {
 }
 
 /**
+ * Read parameter version (UI[1]/1000), SIL version (R1[99]/1000), and CA[7] from both
+ * axes, then populate the Driver Info fields in the ATP Results (view-telemetry) panel.
+ */
+async function readDriverInfo() {
+  if (!serialPort) {
+    updateMovementStatus('Error: No connection to device', 'error');
+    return;
+  }
+
+  updateMovementStatus('Reading driver info...', 'running');
+
+  showLiveData(false);
+  await new Promise(resolve => setTimeout(resolve, 60));
+
+  for (let i = 0; i < 10; i++) {
+    const r = await readMsg(';;', { skipLock: true });
+    if (!r) break;
+  }
+
+  const ui1Raw  = await readMsg('UI[1];;');
+  const silRaw  = await readMsg('R1[99];;');
+  const trRaw   = await readMsg('ax1.CA[7];;');
+  const elRaw   = await readMsg('ax2.CA[7];;');
+
+  const parseNum = (raw, key) => {
+    const escaped = key.replace(/[\[\]\.]/g, '\\$&');
+    const match = raw && raw.match(new RegExp(`${escaped};+([-+]?\\d+\\.?\\d*(?:[eE][+-]?\\d+)?)`));
+    return match ? parseFloat(match[1]) : NaN;
+  };
+
+  const parseCA7 = (raw, axis) => {
+    const match = raw && raw.match(new RegExp(`ax${axis}\\.CA\\[7\\];+([-+]?\\d+)`));
+    return match ? parseFloat(match[1]) : NaN;
+  };
+
+  const paramVer = parseNum(ui1Raw, 'UI[1]') / 1000;
+  const sil      = parseNum(silRaw, 'R1[99]') / 1000;
+  const trVal    = parseCA7(trRaw, 1);
+  const elVal    = parseCA7(elRaw, 2);
+
+  if (isNaN(paramVer) || isNaN(sil) || isNaN(trVal) || isNaN(elVal)) {
+    showLiveData(true);
+    updateMovementStatus('Error: Could not read driver info', 'error');
+    return;
+  }
+
+  const paramVerEl = document.getElementById('vt-param-version');
+  const silVerEl   = document.getElementById('vt-sil-version');
+  const trInput    = document.getElementById('vt-ca7-tr');
+  const elInput    = document.getElementById('vt-ca7-el');
+
+  if (paramVerEl) paramVerEl.value = paramVer;
+  if (silVerEl)   silVerEl.value   = sil;
+  if (trInput)    trInput.value    = trVal;
+  if (elInput)    elInput.value    = elVal;
+
+  showLiveData(true);
+  updateMovementStatus(`Driver info read — Param v${paramVer}, SIL ${sil}, CA[7] TR: ${trVal} EL: ${elVal}`, 'ready');
+}
+
+/**
  * Write the values from the panel input fields to CA[7] on both axes.
  */
 async function writeCommutationAngles() {
@@ -539,6 +600,7 @@ window.updateMovementStatus = updateMovementStatus;
 window.commutation = commutation;
 window.readCommutationAngles = readCommutationAngles;
 window.writeCommutationAngles = writeCommutationAngles;
+window.readDriverInfo = readDriverInfo;
 window.setZeroAngles = setZeroAngles;
 window.playTune = playTune;
 window.turnOffMotor = turnOffMotor;

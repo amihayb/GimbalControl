@@ -698,6 +698,11 @@ async function printAtpReport() {
   const ca7ElRaw = parseFloat(document.getElementById('vt-ca7-el')?.value);
   const hasCa7   = !isNaN(ca7TrRaw) && !isNaN(ca7ElRaw);
 
+  const paramVersion = document.getElementById('vt-param-version')?.value.trim() || '';
+  const silVersion   = document.getElementById('vt-sil-version')?.value.trim()   || '';
+  const hasParamVer  = paramVersion !== '';
+  const hasSilVer    = silVersion !== '';
+
   // Format gimbal number: pure digits get zero-padded to 3 places and prefixed with "SN: "
   function formatGimbalNo(raw) {
     if (!raw) return '—';
@@ -1013,6 +1018,8 @@ async function printAtpReport() {
           <tr><td>Gimbal Number</td><td>${gimbalNo}</td></tr>
           <tr><td>Operator</td><td>${operator}</td></tr>
           <tr><td>Date / Time</td><td>${dateTime}</td></tr>
+          ${hasParamVer ? `<tr><td>Parameter Version</td><td>${paramVersion}</td></tr>` : ''}
+          ${hasSilVer   ? `<tr><td>SIL Version</td><td>${silVersion}</td></tr>` : ''}
           ${hasCa7 ? `<tr><td>Commutation Angle CA[7]</td><td>TR: ${ca7TrRaw} &nbsp;&nbsp; EL: ${ca7ElRaw}</td></tr>` : ''}
           <tr><td>Remarks</td><td style="white-space:pre-wrap;">${remarks}</td></tr>
         </table>

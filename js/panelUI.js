@@ -445,26 +445,33 @@ function ViewTelemetry() {
     </div>
 
     <hr>
-    <h2>Commutation Angle</h2>
+    <h2>Driver Info</h2>
+    <div style="display:flex; gap:8px; margin:10px 0; justify-content:center;">
+      <a class="button" onclick="readDriverInfo()" style="display:inline-block; padding:10px 20px; margin:0;">Read Driver</a>
+    </div>
     <table class="parameter-table">
       <thead>
         <tr>
-          <th class="param-header" style="width:33%">CA[7]</th>
-          <th class="axis-header" style="width:33%">TR</th>
-          <th class="axis-header" style="width:33%">EL</th>
+          <th class="param-header" style="width:33%">Parameter</th>
+          <th class="axis-header" colspan="2" style="width:67%">Value</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td class="param-label">Value</td>
-          <td class="param-input-cell"><input type="number" id="vt-ca7-tr" min="0" max="4095" step="1" class="param-input" placeholder="—" /></td>
-          <td class="param-input-cell"><input type="number" id="vt-ca7-el" min="0" max="4095" step="1" class="param-input" placeholder="—" /></td>
+          <td class="param-label">Param Version</td>
+          <td class="param-input-cell" colspan="2"><input type="text" id="vt-param-version" class="param-input" style="width:100%" readonly placeholder="—" /></td>
+        </tr>
+        <tr>
+          <td class="param-label">SIL Version</td>
+          <td class="param-input-cell" colspan="2"><input type="text" id="vt-sil-version" class="param-input" style="width:100%" readonly placeholder="—" /></td>
+        </tr>
+        <tr>
+          <td class="param-label">CA[7]</td>
+          <td class="param-input-cell"><input type="number" id="vt-ca7-tr" min="0" max="4095" step="1" class="param-input" placeholder="TR" /></td>
+          <td class="param-input-cell"><input type="number" id="vt-ca7-el" min="0" max="4095" step="1" class="param-input" placeholder="EL" /></td>
         </tr>
       </tbody>
     </table>
-    <div style="display:flex; gap:8px; margin:10px 0; justify-content:center;">
-      <a class="button" onclick="readCommutationAngles()" style="display:inline-block; padding:10px 20px; margin:0;">Read</a>
-    </div>
 
     <hr>
     <h2>IBIT</h2>

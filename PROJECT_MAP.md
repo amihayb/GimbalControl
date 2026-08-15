@@ -142,6 +142,12 @@ Key values:
 - `#vt-datetime` — Date/Time (`datetime-local`, pre-filled with current time on open)
 - `#vt-remarks` — Remarks (textarea)
 
+**ATP Results panel Driver Info fields** (populated by `readDriverInfo()`):
+- `#vt-param-version` — Parameter version combined as `"major.minor"` (read-only text)
+- `#vt-sil-version` — SIL version from `R1[99]` (read-only text)
+- `#vt-ca7-tr` — CA[7] traverse axis value (0–4095)
+- `#vt-ca7-el` — CA[7] elevation axis value (0–4095)
+
 These values are read by `printAtpReport()` to populate the PDF cover page.
 
 **Layout margin management:** Every panel open/close function adjusts `marginLeft` on three elements together: `#explenation_text`, `#plot-area`, and `#resultsTable`.
@@ -224,6 +230,7 @@ CSV columns saved by `saveDataToCSV`:
 | `commutationStepByStep(axis)` | Step-by-step commutation using torque control; shows same safety warning (function exists but has no UI button — currently dead code; **do not remove** — planned for future UI wiring) |
 | `readCommutationAngles()` | Reads `CA[7]` from both axes (ax1, ax2) and fills `#ca7-tr` / `#ca7-el` inputs in the Installation Setup panel |
 | `writeCommutationAngles()` | Reads `#ca7-tr` / `#ca7-el` inputs, validates 0–4095 range, writes `CA[7]` to both axes |
+| `readDriverInfo()` | Reads `UI[1]` (parameter version = `UI[1]/1000`), `R1[99]` (SIL version = `R1[99]/1000`), and `CA[7]` for both axes; populates the Driver Info section in the ATP Results panel (`#vt-param-version`, `#vt-sil-version`, `#vt-ca7-tr`, `#vt-ca7-el`) |
 | `playTune()` | Sends `R1[1]=8` — plays a melody on the gimbal |
 | `updateMovementStatus(msg, type)` | Updates the status bar text and color |
 | `validateMovementPrerequisites()` | Checks serial is connected and motor is on |
