@@ -105,30 +105,10 @@ function runScenario(scenario) {
       console.log('Running demo 1 scenario');
       break;
     case 'demo2':
-      updateMovementStatus('Running demo 1 scenario...', 'running');
+      updateMovementStatus('Running demo 2 scenario...', 'running');
       sendMsg('R1[16]=20; R1[17]=30; R1[18]=-30; R1[26]=10; R1[27]=30; R1[28]=30; R1[1]=13;');
       console.log('Running demo 2 scenario');
       break;
-      // if (intervalMove) {
-      //   clearInterval(intervalMove);
-      //   intervalMove = null;
-      //   console.log("Stopped sending commands");
-      //   updateMovementStatus('Demo 2 stopped', 'ready');
-      // } else {
-      //   console.log("Start sending commands");
-      //   updateMovementStatus('Running Demo 2 - jumping back and forth...', 'running');
-      //   intervalMove = setInterval(() => {
-      //     let message;
-      //     if (changeDir) {
-      //       message = 'R1[11]=195; R1[21]=55;';
-      //     } else {
-      //       message = 'R1[11]=200; R1[21]=60;';
-      //     }
-      //     sendMsg(message);
-      //     changeDir = !changeDir;
-      //   }, 1000);
-      // }
-      // break;
   }
 }
 
@@ -338,6 +318,9 @@ async function commutation(axis = 2) {
 }
 
 
+// NOTE: commutationStepByStep is intentionally kept even though it has no UI button.
+// It is documented in PROJECT_MAP.md as the alternative torque-control commutation method
+// and may be wired to a UI button in a future release. Do NOT remove it.
 async function commutationStepByStep(axis = 2) {
   
   // Check serial connection
@@ -364,12 +347,10 @@ async function commutationStepByStep(axis = 2) {
   showLiveData(false);
   await turnOffMotor();
   await flushSerialReader();
-  // await new Promise(resolve => setTimeout(resolve, 50));
-  // await readMsg('EO=1;;\r', { skipLock: true });
 
-  await readMsg(`ax${axis}.UM=3;ax${axis}.MO=1;`);   // Stepper mode, enable motor, set torque control
+  await readMsg(`ax${axis}.UM=3;ax${axis}.MO=1;`);
   await new Promise(resolve => setTimeout(resolve, 500));
-  await readMsg(`ax${axis}.TC=1;`);   // Set torque control
+  await readMsg(`ax${axis}.TC=1;`);
   updateMovementStatus('Waiting for commutation to settle...', 'running');
   await new Promise(resolve => setTimeout(resolve, 5000));
 
@@ -383,7 +364,7 @@ async function commutationStepByStep(axis = 2) {
     console.warn(`WF[40] read attempt ${attempt + 1} failed (got: ${wf40Raw}), retrying...`);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  await sendMsg(`ax${axis}.MO=0;ax${axis}.UM=5;`); // Disable motor, restore mode
+  await sendMsg(`ax${axis}.MO=0;ax${axis}.UM=5;`);
   if (isNaN(wf40) || wf40 === 0) {
     updateMovementStatus('Commutation failed: could not read WF[40]', 'error');
     showLiveData(true);
@@ -398,6 +379,7 @@ async function commutationStepByStep(axis = 2) {
   updateMovementStatus('Commutation complete', 'ready');
   showLiveData(true);
 }
+
 
 /**
  * Play a tune on the gimbal
@@ -492,8 +474,8 @@ async function readCommutationAngles() {
     return;
   }
 
-  const trInput = document.getElementById('ca7-tr');
-  const elInput = document.getElementById('ca7-el');
+  const trInput = document.getElementById('ca7-tr') || document.getElementById('vt-ca7-tr');
+  const elInput = document.getElementById('ca7-el') || document.getElementById('vt-ca7-el');
   if (trInput) trInput.value = trVal;
   if (elInput) elInput.value = elVal;
 

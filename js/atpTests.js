@@ -415,7 +415,10 @@ async function runIBIT() {
   const recordButton = document.getElementById('recordButton');
   if (recordButton) recordButton.style.color = '#dc3545';
 
-  // Poll R1[51] until result or timeout
+  // Poll R1[51] until result or timeout.
+  // R1[51] is now included in every live-data frame; read the cached value
+  // instead of issuing a separate serial request that would race with live data.
+  resetLastIbitStatus();
   const maxWaitMs = 12000;
   const pollIntervalMs = 200;
   const pollStart = Date.now();
@@ -427,10 +430,7 @@ async function runIBIT() {
     const pct = Math.min(100, Math.round(((Date.now() - pollStart) / maxWaitMs) * 100));
     if (ibitBtn) ibitBtn.style.setProperty('--progress', `${pct}%`);
 
-    const response = await readMsg('R1[51];;\r');
-    console.log(response);
-    const value = parseInt(response.trim().split(';')[0]);
-    console.log(value);
+    const value = getLastIbitStatus();
     if (value === 4) { ibitResult = 'success'; break; }
     if (value === 9) { ibitResult = 'failure'; break; }
   }
@@ -693,6 +693,10 @@ async function printAtpReport() {
   const operator  = document.getElementById('vt-operator')?.value.trim()  || '—';
   const remarks   = document.getElementById('vt-remarks')?.value.trim()   || '—';
   const rawDt     = document.getElementById('vt-datetime')?.value.trim();
+
+  const ca7TrRaw = parseFloat(document.getElementById('vt-ca7-tr')?.value);
+  const ca7ElRaw = parseFloat(document.getElementById('vt-ca7-el')?.value);
+  const hasCa7   = !isNaN(ca7TrRaw) && !isNaN(ca7ElRaw);
 
   // Format gimbal number: pure digits get zero-padded to 3 places and prefixed with "SN: "
   function formatGimbalNo(raw) {
@@ -1009,6 +1013,7 @@ async function printAtpReport() {
           <tr><td>Gimbal Number</td><td>${gimbalNo}</td></tr>
           <tr><td>Operator</td><td>${operator}</td></tr>
           <tr><td>Date / Time</td><td>${dateTime}</td></tr>
+          ${hasCa7 ? `<tr><td>Commutation Angle CA[7]</td><td>TR: ${ca7TrRaw} &nbsp;&nbsp; EL: ${ca7ElRaw}</td></tr>` : ''}
           <tr><td>Remarks</td><td style="white-space:pre-wrap;">${remarks}</td></tr>
         </table>
       </div>

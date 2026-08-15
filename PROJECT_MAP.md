@@ -162,13 +162,17 @@ These values are read by `printAtpReport()` to populate the PDF cover page.
 | `readMsg(msg)` | Sends a command and reads back the response |
 | `flushSerialReader()` | Clears stale bytes from the receive buffer |
 | `showLiveData(state)` | Starts/stops a 20 ms polling loop |
-| `updateLiveData()` | Reads one telemetry snapshot, updates UI inputs, appends to `rows` if recording |
+| `updateLiveData()` | Reads one telemetry snapshot, updates UI inputs, appends to `rows` if recording; also caches `R1[51]` in `lastIbitStatus` |
+| `getLastIbitStatus()` | Returns the most recent `R1[51]` value received via live data (used by `runIBIT`) |
+| `resetLastIbitStatus()` | Sets `lastIbitStatus` back to `null` (called before each IBIT run to clear stale values) |
 | `parsePairs(input)` | Parses `"R1[10];0;R1[31];-1226;..."` style responses |
 | `decodeRegisters(R1,R2,R3)` | Decodes three packed 32-bit registers into position/velocity/current fields |
 
 **Serial locking:** A semaphore (`serialLockDepth`) prevents the live-data loop from colliding with manual commands. `runWithSerialLock(fn)` wraps any write/read that needs exclusive access.
 
-**Alignment sentinel (`R1[125]`):** Always returns `255` and acts as a sync marker. In `updateLiveData()`, `values.indexOf(255)` finds the sentinel; the 7 data registers follow at positions `i+1`…`i+7`. If `255` is absent the frame is discarded.
+**Alignment sentinel (`R1[125]`):** Always returns `255` and acts as a sync marker. In `updateLiveData()`, `values.indexOf(255)` finds the sentinel; the 11 data registers follow at positions `i+1`…`i+11`. If `255` is absent the frame is discarded.
+
+**Live data command (non-packed):** `R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];R1[35];R1[45];R1[51];;` — registers at `i+1`…`i+11` are sysMode, posTr, posEl, velTr, velEl, curTr, curEl, errBits, posErrTr, posErrEl, ibitStatus.
 
 ---
 
@@ -217,7 +221,7 @@ CSV columns saved by `saveDataToCSV`:
 | `sendVelocity(v)` | Sends velocity to both axes; clamps to `MAX_VELOCITY` |
 | `setZeroAngles(axis)` | Sets current position as the zero angle for an axis |
 | `commutation(axis)` | Automated motor commutation with progress indicator; shows safety warning popup before starting |
-| `commutationStepByStep(axis)` | Step-by-step commutation using torque control; shows same safety warning (function exists but has no UI button — currently dead code) |
+| `commutationStepByStep(axis)` | Step-by-step commutation using torque control; shows same safety warning (function exists but has no UI button — currently dead code; **do not remove** — planned for future UI wiring) |
 | `readCommutationAngles()` | Reads `CA[7]` from both axes (ax1, ax2) and fills `#ca7-tr` / `#ca7-el` inputs in the Installation Setup panel |
 | `writeCommutationAngles()` | Reads `#ca7-tr` / `#ca7-el` inputs, validates 0–4095 range, writes `CA[7]` to both axes |
 | `playTune()` | Sends `R1[1]=8` — plays a melody on the gimbal |

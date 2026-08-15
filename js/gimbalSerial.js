@@ -20,6 +20,9 @@ let liveDataInProgress = false;
 let liveDataIdleResolvers = [];
 let lastUIUpdateTime = 0;
 
+// Last R1[51] value received via live data — read by runIBIT() instead of a separate serial poll
+let lastIbitStatus = null;
+
 // ==================== Core Serial Functions ====================
 
 /**
@@ -403,7 +406,7 @@ async function updateLiveData() {
   try {
     const readCommand = USE_PACKED_REGISTERS
       ? 'R1[51];R1[52];R1[53];;\r'
-      : 'R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];R1[35];R1[45];;\r';
+      : 'R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];R1[35];R1[45];R1[51];;\r';
     tRead = await readMsg(readCommand, { skipLock: true });
     // let endTime = Date.now();
     // console.log(`Time taken: ${endTime - readTime}ms`);
@@ -477,6 +480,7 @@ async function updateLiveData() {
     errBits  = values[i + 8]  ?? null;
     posErrTr = values[i + 9]  ?? null;
     posErrEl = values[i + 10] ?? null;
+    lastIbitStatus = values[i + 11] ?? null;
   }
 
   // Only update UI if core values are valid numbers and 100ms have passed since last update
@@ -534,6 +538,8 @@ window.flushSerialReader = flushSerialReader;
 window.parsePairs = parsePairs;
 window.showLiveData = showLiveData;
 window.updateLiveData = updateLiveData;
+window.getLastIbitStatus   = () => lastIbitStatus;
+window.resetLastIbitStatus = () => { lastIbitStatus = null; };
 
 // Export serial port variables for other modules to use
 window.serialPort = serialPort;

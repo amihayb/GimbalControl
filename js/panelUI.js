@@ -445,6 +445,28 @@ function ViewTelemetry() {
     </div>
 
     <hr>
+    <h2>Commutation Angle</h2>
+    <table class="parameter-table">
+      <thead>
+        <tr>
+          <th class="param-header" style="width:33%">CA[7]</th>
+          <th class="axis-header" style="width:33%">TR</th>
+          <th class="axis-header" style="width:33%">EL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="param-label">Value</td>
+          <td class="param-input-cell"><input type="number" id="vt-ca7-tr" min="0" max="4095" step="1" class="param-input" placeholder="—" /></td>
+          <td class="param-input-cell"><input type="number" id="vt-ca7-el" min="0" max="4095" step="1" class="param-input" placeholder="—" /></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="display:flex; gap:8px; margin:10px 0; justify-content:center;">
+      <a class="button" onclick="readCommutationAngles()" style="display:inline-block; padding:10px 20px; margin:0;">Read</a>
+    </div>
+
+    <hr>
     <h2>IBIT</h2>
     <div class="vt-test-section">
       <input type="file" id="vt-file-ibit" accept=".csv" style="display:none">
