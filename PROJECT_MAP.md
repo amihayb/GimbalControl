@@ -218,6 +218,8 @@ CSV columns saved by `saveDataToCSV`:
 | `setZeroAngles(axis)` | Sets current position as the zero angle for an axis |
 | `commutation(axis)` | Automated motor commutation with progress indicator; shows safety warning popup before starting |
 | `commutationStepByStep(axis)` | Step-by-step commutation using torque control; shows same safety warning (function exists but has no UI button — currently dead code) |
+| `readCommutationAngles()` | Reads `CA[7]` from both axes (ax1, ax2) and fills `#ca7-tr` / `#ca7-el` inputs in the Installation Setup panel |
+| `writeCommutationAngles()` | Reads `#ca7-tr` / `#ca7-el` inputs, validates 0–4095 range, writes `CA[7]` to both axes |
 | `playTune()` | Sends `R1[1]=8` — plays a melody on the gimbal |
 | `updateMovementStatus(msg, type)` | Updates the status bar text and color |
 | `validateMovementPrerequisites()` | Checks serial is connected and motor is on |

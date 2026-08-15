@@ -451,6 +451,80 @@ function sendVelocity(v) {
   sendMsg(`R1[13]=${vel}; R1[23]=${vel};`);
 }
 
+// ==================== Commutation Angle R/W ====================
+
+/**
+ * Read CA[7] from both axes and populate the panel input fields.
+ */
+async function readCommutationAngles() {
+  if (!serialPort) {
+    updateMovementStatus('Error: No connection to device', 'error');
+    return;
+  }
+
+  updateMovementStatus('Reading CA[7]...', 'running');
+
+  showLiveData(false);
+  await new Promise(resolve => setTimeout(resolve, 60));
+
+  // Drain residual live-data frames left in the USB buffer.
+  for (let i = 0; i < 10; i++) {
+    const r = await readMsg(';;', { skipLock: true });
+    if (!r) break;
+  }
+
+  const trRaw = await readMsg('ax1.CA[7];;');
+  const elRaw = await readMsg('ax2.CA[7];;');
+
+  const parseCA7 = (raw, axis) => {
+    // Response must contain the register name to be trusted (eo=1 format: "ax1.CA[7];;1030;;").
+    // Any response that lacks it (garbage, stale echo) returns NaN → error path.
+    const match = raw && raw.match(new RegExp(`ax${axis}\\.CA\\[7\\];+([-+]?\\d+)`));
+    return match ? parseFloat(match[1]) : NaN;
+  };
+
+  const trVal = parseCA7(trRaw, 1);
+  const elVal = parseCA7(elRaw, 2);
+
+  if (isNaN(trVal) || isNaN(elVal)) {
+    showLiveData(true);
+    updateMovementStatus('Error: Could not read CA[7]', 'error');
+    return;
+  }
+
+  const trInput = document.getElementById('ca7-tr');
+  const elInput = document.getElementById('ca7-el');
+  if (trInput) trInput.value = trVal;
+  if (elInput) elInput.value = elVal;
+
+  showLiveData(true);
+  updateMovementStatus(`CA[7] read — TR: ${trVal}, EL: ${elVal}`, 'ready');
+}
+
+/**
+ * Write the values from the panel input fields to CA[7] on both axes.
+ */
+async function writeCommutationAngles() {
+  if (!serialPort) {
+    updateMovementStatus('Error: No connection to device', 'error');
+    return;
+  }
+
+  const trInput = document.getElementById('ca7-tr');
+  const elInput = document.getElementById('ca7-el');
+  const trVal = trInput ? parseInt(trInput.value, 10) : NaN;
+  const elVal = elInput ? parseInt(elInput.value, 10) : NaN;
+
+  if (isNaN(trVal) || trVal < 0 || trVal > 4095 ||
+      isNaN(elVal) || elVal < 0 || elVal > 4095) {
+    updateMovementStatus('Error: CA[7] values must be integers 0–4095', 'error');
+    return;
+  }
+
+  await sendMsg(`ax1.CA[7]=${trVal};ax2.CA[7]=${elVal};`);
+  updateMovementStatus(`CA[7] written — TR: ${trVal}, EL: ${elVal}`, 'ready');
+}
+
 // ==================== Status Functions ====================
 
 /**
@@ -481,6 +555,8 @@ window.startLinearMove = startLinearMove;
 window.joystickCmd = joystickCmd;
 window.updateMovementStatus = updateMovementStatus;
 window.commutation = commutation;
+window.readCommutationAngles = readCommutationAngles;
+window.writeCommutationAngles = writeCommutationAngles;
 window.setZeroAngles = setZeroAngles;
 window.playTune = playTune;
 window.turnOffMotor = turnOffMotor;

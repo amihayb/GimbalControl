@@ -268,6 +268,33 @@ function InstallationSetup() {
       <a class="button" onclick="setZeroAngles('el')">Set Zero EL</a>
       <a class="button" id="btn-commutation-1" onclick="commutation(1)">Commutation Traverse</a>
       <a class="button" id="btn-commutation-2" onclick="commutation(2)">Commutation Elevation</a>
+    </div>
+
+    <hr>
+    <h2>Commutation Angle</h2>
+    <table class="parameter-table">
+      <thead>
+        <tr>
+          <th class="param-header" style="width:33%">CA[7]</th>
+          <th class="axis-header" style="width:33%">TR</th>
+          <th class="axis-header" style="width:33%">EL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="param-label">Value</td>
+          <td class="param-input-cell"><input type="number" id="ca7-tr" min="0" max="4095" step="1" class="param-input" placeholder="0–4095" /></td>
+          <td class="param-input-cell"><input type="number" id="ca7-el" min="0" max="4095" step="1" class="param-input" placeholder="0–4095" /></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="display:flex; gap:8px; margin:10px 0; justify-content:center;">
+      <a class="button" onclick="readCommutationAngles()" style="display:inline-block; padding:10px 20px; margin:0;">Read</a>
+      <a class="button" onclick="writeCommutationAngles()" style="display:inline-block; padding:10px 20px; margin:0;">Write</a>
+    </div>
+
+    <hr>
+    <div style="margin: 10px 0;">
       <a class="button" onclick="saveElmo()">Save Elmo Settings</a>
     </div>
   `;
