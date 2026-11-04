@@ -271,20 +271,25 @@ function InstallationSetup() {
     </div>
 
     <hr>
-    <h2>Commutation Angle</h2>
+    <h2>Commutation & Zero Offset</h2>
     <table class="parameter-table">
       <thead>
         <tr>
-          <th class="param-header" style="width:33%">CA[7]</th>
+          <th class="param-header" style="width:33%">Parameter</th>
           <th class="axis-header" style="width:33%">TR</th>
           <th class="axis-header" style="width:33%">EL</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td class="param-label">Value</td>
+          <td class="param-label">CA[7]</td>
           <td class="param-input-cell"><input type="number" id="ca7-tr" min="0" max="4095" step="1" class="param-input" placeholder="0–4095" /></td>
           <td class="param-input-cell"><input type="number" id="ca7-el" min="0" max="4095" step="1" class="param-input" placeholder="0–4095" /></td>
+        </tr>
+        <tr>
+          <td class="param-label">Zero Offset S[17]</td>
+          <td class="param-input-cell"><input type="number" id="zero-offset-tr" class="param-input" readonly placeholder="—" /></td>
+          <td class="param-input-cell"><input type="number" id="zero-offset-el" class="param-input" readonly placeholder="—" /></td>
         </tr>
       </tbody>
     </table>

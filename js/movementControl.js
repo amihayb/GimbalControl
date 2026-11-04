@@ -457,6 +457,22 @@ async function readCommutationAngles() {
 
   const trRaw = await readMsg('ax1.CA[7];;');
   const elRaw = await readMsg('ax2.CA[7];;');
+  const trOffRaw = await readMsg('S1[17];;');
+  const elOffRaw = await readMsg('S2[17];;');
+
+  const parseOffset = (raw, socket) => {
+    const match = raw && raw.match(new RegExp(`S${socket}\\[17\\];+([-+]?\\d+)`, 'i'));
+    return match ? parseFloat(match[1]) : NaN;
+  };
+
+  const trOff = parseOffset(trOffRaw, 1);
+  const elOff = parseOffset(elOffRaw, 2);
+
+  const trOffInput = document.getElementById('zero-offset-tr');
+  const elOffInput = document.getElementById('zero-offset-el');
+  if (trOffInput) trOffInput.value = isNaN(trOff) ? '' : trOff;
+  if (elOffInput) elOffInput.value = isNaN(elOff) ? '' : elOff;
+  if (isNaN(trOff) || isNaN(elOff)) console.warn('Zero offset read failed:', trOffRaw, elOffRaw);
 
   const parseCA7 = (raw, axis) => {
     // Response must contain the register name to be trusted (eo=1 format: "ax1.CA[7];;1030;;").
@@ -480,7 +496,7 @@ async function readCommutationAngles() {
   if (elInput) elInput.value = elVal;
 
   showLiveData(true);
-  updateMovementStatus(`CA[7] read — TR: ${trVal}, EL: ${elVal}`, 'ready');
+  updateMovementStatus(`CA[7] read — TR: ${trVal}, EL: ${elVal} | Offset TR: ${trOff}, EL: ${elOff}`, 'ready');
 }
 
 /**

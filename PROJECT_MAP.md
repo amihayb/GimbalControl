@@ -228,7 +228,7 @@ CSV columns saved by `saveDataToCSV`:
 | `setZeroAngles(axis)` | Sets current position as the zero angle for an axis |
 | `commutation(axis)` | Automated motor commutation with progress indicator; shows safety warning popup before starting |
 | `commutationStepByStep(axis)` | Step-by-step commutation using torque control; shows same safety warning (function exists but has no UI button — currently dead code; **do not remove** — planned for future UI wiring) |
-| `readCommutationAngles()` | Reads `CA[7]` from both axes (ax1, ax2) and fills `#ca7-tr` / `#ca7-el` inputs in the Installation Setup panel |
+| `readCommutationAngles()` | Reads `CA[7]` from both axes (ax1, ax2) and fills `#ca7-tr` / `#ca7-el` inputs in the Installation Setup panel; also reads the zero offset `S1[17]` (TR) / `S2[17]` (EL, raw encoder counts) into the read-only `#zero-offset-tr` / `#zero-offset-el` inputs (written only via `setZeroAngles()`) |
 | `writeCommutationAngles()` | Reads `#ca7-tr` / `#ca7-el` inputs, validates 0–4095 range, writes `CA[7]` to both axes |
 | `readDriverInfo()` | Reads `UI[1]` (parameter version = `UI[1]/1000`), `R1[99]` (SIL version = `R1[99]/1000`), and `CA[7]` for both axes; populates the Driver Info section in the ATP Results panel (`#vt-param-version`, `#vt-sil-version`, `#vt-ca7-tr`, `#vt-ca7-el`) |
 | `playTune()` | Sends `R1[1]=8` — plays a melody on the gimbal |
