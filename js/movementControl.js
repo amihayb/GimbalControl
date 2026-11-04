@@ -82,7 +82,39 @@ function moveToPosition(position, tr, el) {
   updateMovementStatus(`Moving to ${position} position`, 'moving');
 }
 
+/**
+ * Move one axis to its limit while the other axis stays at its current (live) angle.
+ * Limits come from PREDEFINED_POSITIONS (topRight = max, bottomLeft = min).
+ * @param {'up'|'down'|'left'|'right'} direction
+ */
+function moveToEdge(direction) {
+  const curTr = parseFloat(document.getElementById('PositionInputTR')?.value) || 0;
+  const curEl = parseFloat(document.getElementById('PositionInputEL')?.value) || 0;
+  const max = PREDEFINED_POSITIONS.topRight;
+  const min = PREDEFINED_POSITIONS.bottomLeft;
+
+  const targets = {
+    up:    { tr: curTr,  el: max.el },
+    down:  { tr: curTr,  el: min.el },
+    right: { tr: max.tr, el: curEl },
+    left:  { tr: min.tr, el: curEl },
+  };
+  const target = targets[direction];
+  if (!target) return;
+
+  moveToPosition(direction, Math.round(target.tr * 100) / 100, Math.round(target.el * 100) / 100);
+}
+
 // ==================== Scenario Functions ====================
+
+/**
+ * Build the command that starts a sine/complex scenario (R1[1]=13) from a profile
+ * like SCENARIOS.demo1 or ATP_CONFIG.sine: { tr: {amp, rate, center}, el: {amp, rate, center} }.
+ */
+function sineScenarioCmd({ tr, el }) {
+  return `R1[16]=${tr.amp}; R1[17]=${tr.rate}; R1[18]=${tr.center}; ` +
+         `R1[26]=${el.amp}; R1[27]=${el.rate}; R1[28]=${el.center}; R1[1]=13;`;
+}
 
 /**
  * Run predefined movement scenarios
@@ -101,12 +133,12 @@ function runScenario(scenario) {
       break;
     case 'demo1':
       updateMovementStatus('Running demo 1 scenario...', 'running');
-      sendMsg('R1[16]=2; R1[17]=100; R1[18]=90; R1[26]=5; R1[27]=30; R1[28]=10; R1[1]=13;');
+      sendMsg(sineScenarioCmd(SCENARIOS.demo1));
       console.log('Running demo 1 scenario');
       break;
     case 'demo2':
       updateMovementStatus('Running demo 2 scenario...', 'running');
-      sendMsg('R1[16]=20; R1[17]=30; R1[18]=-30; R1[26]=10; R1[27]=30; R1[28]=30; R1[1]=13;');
+      sendMsg(sineScenarioCmd(SCENARIOS.demo2));
       console.log('Running demo 2 scenario');
       break;
   }
@@ -644,6 +676,8 @@ function updateMovementStatus(message, type) {
 window.validateMovementPrerequisites = validateMovementPrerequisites;
 window.sendToAngles = sendToAngles;
 window.moveToPosition = moveToPosition;
+window.moveToEdge = moveToEdge;
+window.sineScenarioCmd = sineScenarioCmd;
 window.setMovementVelocity = setMovementVelocity;
 window.runScenario = runScenario;
 window.startSineMove = startSineMove;

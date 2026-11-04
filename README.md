@@ -141,7 +141,7 @@ R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];R1[35];R1[45];R1[
 | Register | Meaning | Display scaling |
 |---|---|---|
 | `R1[125]` | Alignment marker — always **255**; frames without it are discarded | — |
-| `R1[10]` | System mode | raw |
+| `R1[10]` | System mode: 0 Idle, 1 Position, 2 Rate, 4 Homing, 5 IBIT, 8 Sing, 9 Restart Control, 12 Side to side Profile, 13 Sine Profile | number + name |
 | `R1[31]`, `R1[41]` | Position TR, EL | ÷ 1000 → degrees |
 | `R1[33]`, `R1[43]` | Velocity TR, EL | ÷ 1000 → deg/s |
 | `R1[34]`, `R1[44]` | Current TR, EL | ÷ 1000 → A |

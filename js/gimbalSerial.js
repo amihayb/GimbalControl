@@ -548,7 +548,11 @@ async function updateLiveData() {
   
   if (allValuesValid && timeSinceLastUIUpdate >= 100) {
     if (!USE_PACKED_REGISTERS) {
-      updateInputValue('systemModeInput', sysMode, 1);
+      const modeInput = document.getElementById('systemModeInput');
+      if (modeInput) {
+        const modeName = SYSTEM_MODE_NAMES[sysMode];
+        modeInput.value = modeName ? `${sysMode} – ${modeName}` : String(sysMode);
+      }
     }
     updateInputValue('PositionInputTR', posTr, 1000, 3);
     updateInputValue('PositionInputEL', posEl, 1000, 3);

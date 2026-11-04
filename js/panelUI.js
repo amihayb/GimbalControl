@@ -26,6 +26,13 @@ function MovementControl() {
   const movementPanel = document.createElement('div');
   movementPanel.id = 'movement-control-panel';
   movementPanel.classList.add('movement-panel');
+
+  // Position-pad button: moves to a PREDEFINED_POSITIONS entry
+  const P = PREDEFINED_POSITIONS;
+  const presetBtn = (name, label, icon, rotate = 0) =>
+    `<button onclick="moveToPosition('${name}', ${P[name].tr}, ${P[name].el})" title="${label} (${P[name].tr}°, ${P[name].el}°)">` +
+    `<i class="fa ${icon}"${rotate ? ` style="transform: rotate(${rotate}deg);"` : ''}></i></button>`;
+
   movementPanel.innerHTML = `
     <div class="panel-header">
       <h1>Movement Control</h1>
@@ -52,8 +59,8 @@ function MovementControl() {
       <button onclick="sendToAngles()" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Send to Angles</button>
     </div><br>
     
-    <!-- Joystick Control -->
-    <div style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
+    <!-- Joystick Control (shown only when FEATURES.joystick is true) -->
+    <div style="display: ${FEATURES.joystick ? 'flex' : 'none'}; justify-content: center; align-items: center; margin: 20px 0;">
       <div id="joystick" style="width: 120px; height: 120px;">
         <svg width="100%" height="100%" viewBox="0 0 100 100">
           <defs>
@@ -85,16 +92,16 @@ function MovementControl() {
 
     <hr>
     <h2>Predefined Positions</h2>
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="moveToPosition('topLeft', -200, 65)" title="Top Left (-200°, 65°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-up" style="transform: rotate(-45deg); display: inline-block;"></i></button>
-      <button onclick="moveToPosition('topRight', 200, 65)" title="Top Right (200°, 65°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-up" style="transform: rotate(45deg); display: inline-block;"></i></button>
-    </div><br>
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px;">
-      <button onclick="moveToPosition('home', 0, 0)" title="Home (0°, 0°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-home"></i></button>
-    </div><br>
-    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
-      <button onclick="moveToPosition('bottomLeft', -200, -15)" title="Bottom Left (-200°, -15°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-down" style="transform: rotate(45deg); display: inline-block;"></i></button>
-      <button onclick="moveToPosition('bottomRight', 200, -15)" title="Bottom Right (200°, -15°)" style="background-color: var(--color-btn-active); color: var(--color-text-active);"><i class="fa fa-arrow-down" style="transform: rotate(-45deg); display: inline-block;"></i></button>
+    <div class="position-pad">
+      ${presetBtn('topLeft', 'Top Left', 'fa-arrow-up', -45)}
+      <button onclick="moveToEdge('up')" title="Up — keep TR, EL to max (${P.topRight.el}°)"><i class="fa fa-arrow-up"></i></button>
+      ${presetBtn('topRight', 'Top Right', 'fa-arrow-up', 45)}
+      <button onclick="moveToEdge('left')" title="Left — keep EL, TR to min (${P.bottomLeft.tr}°)"><i class="fa fa-arrow-left"></i></button>
+      ${presetBtn('home', 'Home', 'fa-home')}
+      <button onclick="moveToEdge('right')" title="Right — keep EL, TR to max (${P.topRight.tr}°)"><i class="fa fa-arrow-right"></i></button>
+      ${presetBtn('bottomLeft', 'Bottom Left', 'fa-arrow-down', 45)}
+      <button onclick="moveToEdge('down')" title="Down — keep TR, EL to min (${P.bottomLeft.el}°)"><i class="fa fa-arrow-down"></i></button>
+      ${presetBtn('bottomRight', 'Bottom Right', 'fa-arrow-down', -45)}
     </div><br>
     
     <hr>
@@ -105,13 +112,14 @@ function MovementControl() {
       <button onclick="runScenario('demo2')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Demo 2</button>
     </div><br>
     
+    ${FEATURES.complexScenarios ? `
     <hr>
     <h2>Complex Scenarios</h2>
-    <div style="margin: 10px 0;">
-      <button onclick="openComplexScenario('sine')">Sine Move</button>
-      <button onclick="openComplexScenario('linear')">Repeat Linear</button>
+    <div class="target-control" style="display: flex; justify-content: center; margin-top: 10px; gap: 10px;">
+      <button onclick="openComplexScenario('sine')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Sine Move</button>
+      <button onclick="openComplexScenario('linear')" style="background-color: var(--color-btn-active); color: var(--color-text-active);">Repeat Linear</button>
     </div>
-    
+    ` : ''}
   `;
 
   document.body.appendChild(movementPanel);
@@ -189,8 +197,8 @@ function openComplexScenario(type) {
         <input type="number" id="sineDuration" value="60" style="width: 100%; padding: 8px; margin: 5px 0;">
       </div>
       <div style="display: flex; gap: 10px; justify-content: end; margin-top: 20px;">
-        <button onclick="closeComplexScenario()" style="padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Cancel</button>
-        <button onclick="startSineMove()" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Start</button>
+        <button onclick="closeComplexScenario()">Cancel</button>
+        <button class="primary" onclick="startSineMove()">Start</button>
       </div>
     `;
   } else if (type === 'linear') {
@@ -213,8 +221,8 @@ function openComplexScenario(type) {
         <input type="number" id="linearVelocity" value="20" style="width: 100%; padding: 8px; margin: 5px 0;">
       </div>
       <div style="display: flex; gap: 10px; justify-content: end; margin-top: 20px;">
-        <button onclick="closeComplexScenario()" style="padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Cancel</button>
-        <button onclick="startLinearMove()" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">Start</button>
+        <button onclick="closeComplexScenario()">Cancel</button>
+        <button class="primary" onclick="startLinearMove()">Start</button>
       </div>
     `;
   }

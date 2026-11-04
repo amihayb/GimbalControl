@@ -39,14 +39,19 @@ Each file exposes its public API by assigning to `window.*` at the bottom, so la
 ---
 
 ### `js/constants.js`
-Defines all **numbers and settings** used across the app — never changed at runtime.
+Defines all **numbers and settings** used across the app — never changed at runtime. **Put new tunable values here, not inline in the code.**
 
 Key values:
 - `deg2ticks = 2¹⁸ / 360` — converts degrees to encoder ticks
 - `r2d`, `d2r` — radian/degree conversion factors
 - `SERIAL_BAUD_RATE = 115200`
 - `DEFAULT_VELOCITY`, `MAX_VELOCITY` (deg/s)
-- `PREDEFINED_POSITIONS` — home, topRight, topLeft, bottomRight, bottomLeft
+- `PREDEFINED_POSITIONS` — home and the four corners; also the TR/EL limits used by the position pad and the friction sweep
+- `FEATURES` — show/hide optional UI (developer setting, not a user toggle). `joystick: false` hides the round joystick in Movement Control; `complexScenarios: false` hides Sine Move / Repeat Linear (their `startSineMove()` / `startLinearMove()` are unimplemented stubs)
+- `ARRIVAL_TOLERANCE_DEG` — distance at which an axis counts as "arrived" (`waitForPosition`, friction sweep)
+- `SCENARIOS` — Demo 1 / Demo 2 profiles (amplitude, rate, center per axis), sent via `sineScenarioCmd()`
+- `ATP_CONFIG` — all ATP test settings and pass/fail limits: `testVelocity`, `ibit` (timeout, status codes, sector, tolerances), `sine` (profile, duration, limits), `friction` (sweep velocity, limit). Plots, tables, popups and PDF report text read their limits from here
+- `SYSTEM_MODE_NAMES` — `R1[10]` value → name, shown as e.g. "1 – Position" in `#systemModeInput`
 - `MOVEMENT_STATUS_TYPES`, `STATUS_COLORS`
 - `initialRows` — blank template for the `rows` recording object
 
@@ -102,7 +107,7 @@ Key values:
 | `finishFrictionTestResults(silent?)` | Same pattern for friction test |
 | `handleAtpCsvLoaded(fileName)` | Called when a CSV is loaded; routes to the right `finish*` function with `silent=true` (no popup) |
 | `runIBIT()` | Full IBIT procedure: connect check, trigger, record, poll R1[51], save CSV |
-| `runSineTest()` | Moves to random angles, runs sine scenario, records 15 s, saves CSV, returns home |
+| `runSineTest()` | Moves to TR −90°, EL 15°, runs sine scenario, records 15 s, saves CSV, returns home |
 | `runFrictionTest()` | Slow sweep bottom-left → top-right → bottom-left, records throughout, saves CSV |
 | `vtMarkTestLoaded(type)` | Saves `rows` snapshot into `vtSavedRows`, enables Show Results button, checks if all 3 loaded |
 | `resetVtLoadedTests()` | Clears `vtSavedRows` and `vtLoadedTests` state |
@@ -211,6 +216,8 @@ CSV columns saved by `saveDataToCSV`:
 |---|---|
 | `sendToAngles()` | Moves both axes to angles typed in the UI |
 | `moveToPosition(name, tr, el)` | Moves to a named preset position |
+| `sineScenarioCmd(profile)` | Builds the `R1[16..28]; R1[1]=13` command from a profile in `SCENARIOS` or `ATP_CONFIG.sine` |
+| `moveToEdge(direction)` | Position pad arrows: `up`/`down` keep the live TR and send EL to max/min; `left`/`right` keep the live EL and send TR to min/max (limits from `PREDEFINED_POSITIONS`) |
 | `runScenario(scenario)` | Runs `'scan'`, `'demo1'`, or `'demo2'` |
 | `joystickCmd(direction)` | Increments/decrements traverse or elevation by 1° |
 | `sendVelocity(v)` | Sends velocity to both axes; clamps to `MAX_VELOCITY` |
@@ -302,7 +309,8 @@ The original ES-module source of the BlauPlot charting library. **Not loaded dir
 
 ```
 <body>
-  #topnav          — file open, record button, Glimpse link, theme toggle, about
+  #topnav          — file open, record button, Glimpse link, theme toggle, about,
+                     #app-version (app version text, e.g. "V1.0" — edit here on release), Blau logo
   #sidenav         — connection, motor, live telemetry inputs, nav buttons
   #drop-zone       — main content area (position: relative)
     #explenation_text  — welcome text + lynx image (hidden after IBIT/test)
@@ -368,4 +376,5 @@ Hardware (gimbal) ──USB──► Web Serial API
 | `showTorqueTest()` called from `fileHandling.js` and `app.js` but not defined | — | Loading a CSV throws `ReferenceError` |
 | `turnOffMotor` defined in both `app.js` and `movementControl.js` | both | Last-loaded wins (`movementControl.js`) |
 | `BlauPlot/*.js` and `js/blauplot-bundle.js` can drift out of sync | `blauplot-bundle.js` | Update bundle manually when BlauPlot source changes |
-| `sw.js` does not pre-cache `js/blauplot-bundle.js` | `sw.js` | Will still load from network/fetch-cache fallback |
+| Several constants in `constants.js` are unused (`ANGLE_CONVERSION_FACTOR`, `CURRENT_MIN/MAX`, `JOYSTICK_STEP`, `CSV_HEADERS`, `SIDEBAR_WIDTH`, …) | `constants.js` | Harmless; candidates for cleanup |
+| Every script in `index.html` must also be listed in `STATIC_ASSETS` in `sw.js` | `sw.js` | A missing file can stay stale after a cache-version bump |

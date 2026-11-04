@@ -56,16 +56,31 @@ function buildXYTrace(x, y, subplotIndex, lineOpts = {}) {
   return trace;
 }
 
+/**
+ * IBIT check values, shared by the pass/fail decision and the results table.
+ * Each entry: closest approach of the recording to a sector limit or the commanded velocity.
+ */
+function ibitCheckValues() {
+  const s = ATP_CONFIG.ibit.sector;
+  const v = ATP_CONFIG.testVelocity;
+  return {
+    upperTr: minAbs(plus(rows.Tr_angle, -s.trMax)),
+    upperEl: minAbs(plus(rows.El_angle, -s.elMax)),
+    lowerTr: minAbs(plus(rows.Tr_angle, -s.trMin)),
+    lowerEl: minAbs(plus(rows.El_angle, -s.elMin)),
+    velPosTr: minAbs(plus(rows.Tr_velocity, -v)),
+    velPosEl: minAbs(plus(rows.El_velocity, -v)),
+    velNegTr: minAbs(plus(rows.Tr_velocity, v)),
+    velNegEl: minAbs(plus(rows.El_velocity, v)),
+  };
+}
+
 function ibitTestPassed() {
+  const c = ibitCheckValues();
+  const { sectorToleranceDeg: angTol, velocityToleranceDegS: velTol } = ATP_CONFIG.ibit;
   const checks = [
-    [minAbs(plus(rows.Tr_angle, -200)), 1],
-    [minAbs(plus(rows.Tr_angle, -60)), 1],
-    [minAbs(plus(rows.Tr_angle, 200)), 1],
-    [minAbs(plus(rows.El_angle, 15)), 1],
-    [minAbs(plus(rows.Tr_velocity, -80)), 4],
-    [minAbs(plus(rows.El_velocity, -80)), 4],
-    [minAbs(plus(rows.Tr_velocity, 80)), 4],
-    [minAbs(plus(rows.El_velocity, 80)), 4],
+    [c.upperTr, angTol], [c.upperEl, angTol], [c.lowerTr, angTol], [c.lowerEl, angTol],
+    [c.velPosTr, velTol], [c.velPosEl, velTol], [c.velNegTr, velTol], [c.velNegEl, velTol],
   ];
   return checks.every(([val, crit]) => Math.abs(val) <= crit);
 }
@@ -80,14 +95,16 @@ function sineCurrentRange(arr) {
 }
 
 function sineTestPassed() {
-  return maxAbs(rows.Tr_pos_err) <= 1 && maxAbs(rows.El_pos_err) <= 1
-      && sineCurrentRange(rows.Tr_current) < 1
-      && sineCurrentRange(rows.El_current) < 1;
+  const { posErrLimitDeg, currentRangeLimitA } = ATP_CONFIG.sine;
+  return maxAbs(rows.Tr_pos_err) <= posErrLimitDeg && maxAbs(rows.El_pos_err) <= posErrLimitDeg
+      && sineCurrentRange(rows.Tr_current) < currentRangeLimitA
+      && sineCurrentRange(rows.El_current) < currentRangeLimitA;
 }
 
 function frictionTestPassed(tr, el) {
-  return tr.meanDiffFwd <= 1 && tr.meanDiffBwd <= 1
-      && el.meanDiffFwd <= 1 && el.meanDiffBwd <= 1;
+  const lim = ATP_CONFIG.friction.limitA;
+  return tr.meanDiffFwd <= lim && tr.meanDiffBwd <= lim
+      && el.meanDiffFwd <= lim && el.meanDiffBwd <= lim;
 }
 
 function showAtpPassFailSwal(testName, passed, detail) {
@@ -109,7 +126,7 @@ function finishIbitTableResults(silent = false) {
 function finishSineTestResults(detail, silent = false) {
   const passed = sineTestPassed();
   if (!silent) showAtpPassFailSwal('Sine Test', passed, detail || (passed
-    ? 'Position error within ±1° and current range within 1 A on both axes.'
+    ? `Position error within ±${ATP_CONFIG.sine.posErrLimitDeg}° and current range within ${ATP_CONFIG.sine.currentRangeLimitA} A on both axes.`
     : `Peak pos error: Tr=${maxAbs(rows.Tr_pos_err).toFixed(3)}°, El=${maxAbs(rows.El_pos_err).toFixed(3)}° | Current range: Tr=${sineCurrentRange(rows.Tr_current).toFixed(3)} A, El=${sineCurrentRange(rows.El_current).toFixed(3)} A`));
   showSineTestResults();
 }
@@ -126,8 +143,8 @@ function finishFrictionTestResults(silent = false) {
   const passed = frictionTestPassed(tr, el);
   const worst = Math.max(tr.meanDiffFwd, tr.meanDiffBwd, el.meanDiffFwd, el.meanDiffBwd);
   if (!silent) showAtpPassFailSwal('Friction Test', passed, passed
-    ? 'Mean friction deviation ≤ 1 A on all branches.'
-    : `Worst mean deviation: ${worst.toFixed(4)} A (limit 1 A).`);
+    ? `Mean friction deviation ≤ ${ATP_CONFIG.friction.limitA} A on all branches.`
+    : `Worst mean deviation: ${worst.toFixed(4)} A (limit ${ATP_CONFIG.friction.limitA} A).`);
   showFrictionTestResults(tr, el);
 }
 
@@ -170,44 +187,23 @@ function showIBITResults(plotId, tableId) {
   ];
   BP.plot(plotId, traces, layout, { editable: false });
 
-  BP.yline(plotId,  200, { color: 'red',   dash: 'dash', label: 'sector limits',     yref: 'y',  xref: 'x domain',  editable: false });
-  BP.yline(plotId, -200, { color: 'red',   dash: 'dash',                              yref: 'y',  xref: 'x domain',  editable: false });
-  BP.yline(plotId,   60, { color: 'red',   dash: 'dash', label: 'sector limits',     yref: 'y2', xref: 'x2 domain', editable: false });
-  BP.yline(plotId,  -15, { color: 'red',   dash: 'dash',                              yref: 'y2', xref: 'x2 domain', editable: false });
-  BP.yline(plotId,   80, { color: 'green', dash: 'dash', label: 'Velocity Command',  yref: 'y3', xref: 'x3 domain', editable: false });
-  BP.yline(plotId,  -80, { color: 'green', dash: 'dash',                              yref: 'y3', xref: 'x3 domain', editable: false });
-  BP.yline(plotId,   80, { color: 'green', dash: 'dash', label: 'Velocity Command',  yref: 'y4', xref: 'x4 domain', editable: false });
-  BP.yline(plotId,  -80, { color: 'green', dash: 'dash',                              yref: 'y4', xref: 'x4 domain', editable: false });
+  const { sector, sectorToleranceDeg, velocityToleranceDegS } = ATP_CONFIG.ibit;
+  const vel = ATP_CONFIG.testVelocity;
+  BP.yline(plotId, sector.trMax, { color: 'red',   dash: 'dash', label: 'sector limits',     yref: 'y',  xref: 'x domain',  editable: false });
+  BP.yline(plotId, sector.trMin, { color: 'red',   dash: 'dash',                              yref: 'y',  xref: 'x domain',  editable: false });
+  BP.yline(plotId, sector.elMax, { color: 'red',   dash: 'dash', label: 'sector limits',     yref: 'y2', xref: 'x2 domain', editable: false });
+  BP.yline(plotId, sector.elMin, { color: 'red',   dash: 'dash',                              yref: 'y2', xref: 'x2 domain', editable: false });
+  BP.yline(plotId,  vel,         { color: 'green', dash: 'dash', label: 'Velocity Command',  yref: 'y3', xref: 'x3 domain', editable: false });
+  BP.yline(plotId, -vel,         { color: 'green', dash: 'dash',                              yref: 'y3', xref: 'x3 domain', editable: false });
+  BP.yline(plotId,  vel,         { color: 'green', dash: 'dash', label: 'Velocity Command',  yref: 'y4', xref: 'x4 domain', editable: false });
+  BP.yline(plotId, -vel,         { color: 'green', dash: 'dash',                              yref: 'y4', xref: 'x4 domain', editable: false });
 
+  const c = ibitCheckValues();
   BP.drawTable(tableId, [
-    {
-      parameter: 'Upper Sector Limits Error',
-      value1: minAbs(plus(rows.Tr_angle, -200)),
-      value2: minAbs(plus(rows.Tr_angle, -60)),
-      successCriteria: 1,
-      successMethod: 'smaller'
-    },
-    {
-      parameter: 'Lower Sector Limits Error',
-      value1: minAbs(plus(rows.Tr_angle, 200)),
-      value2: minAbs(plus(rows.El_angle, 15)),
-      successCriteria: 1,
-      successMethod: 'smaller'
-    },
-    {
-      parameter: 'Right Max Velocity Error',
-      value1: minAbs(plus(rows.Tr_velocity, -80)),
-      value2: minAbs(plus(rows.El_velocity, -80)),
-      successCriteria: 4,
-      successMethod: 'smaller'
-    },
-    {
-      parameter: 'Left Max Velocity Error',
-      value1: minAbs(plus(rows.Tr_velocity, 80)),
-      value2: minAbs(plus(rows.El_velocity, 80)),
-      successCriteria: 4,
-      successMethod: 'smaller'
-    }
+    { parameter: 'Upper Sector Limits Error', value1: c.upperTr,  value2: c.upperEl,  successCriteria: sectorToleranceDeg,    successMethod: 'smaller' },
+    { parameter: 'Lower Sector Limits Error', value1: c.lowerTr,  value2: c.lowerEl,  successCriteria: sectorToleranceDeg,    successMethod: 'smaller' },
+    { parameter: 'Right Max Velocity Error',  value1: c.velPosTr, value2: c.velPosEl, successCriteria: velocityToleranceDegS, successMethod: 'smaller' },
+    { parameter: 'Left Max Velocity Error',   value1: c.velNegTr, value2: c.velNegEl, successCriteria: velocityToleranceDegS, successMethod: 'smaller' },
   ]);
 }
 
@@ -255,23 +251,25 @@ function showSineTestResults(plotId, tableId) {
   ];
   BP.plot(plotId, traces, layout, { editable: false });
 
-  BP.yline(plotId,  1, { color: 'red', dash: 'dash', label: '±1° limit', yref: 'y',  xref: 'x domain',  editable: false });
-  BP.yline(plotId, -1, { color: 'red', dash: 'dash',                      yref: 'y',  xref: 'x domain',  editable: false });
-  BP.yline(plotId,  1, { color: 'red', dash: 'dash', label: '±1° limit', yref: 'y2', xref: 'x2 domain', editable: false });
-  BP.yline(plotId, -1, { color: 'red', dash: 'dash',                      yref: 'y2', xref: 'x2 domain', editable: false });
+  const { posErrLimitDeg: errLim, currentRangeLimitA } = ATP_CONFIG.sine;
+  const limLabel = `±${errLim}° limit`;
+  BP.yline(plotId,  errLim, { color: 'red', dash: 'dash', label: limLabel, yref: 'y',  xref: 'x domain',  editable: false });
+  BP.yline(plotId, -errLim, { color: 'red', dash: 'dash',                  yref: 'y',  xref: 'x domain',  editable: false });
+  BP.yline(plotId,  errLim, { color: 'red', dash: 'dash', label: limLabel, yref: 'y2', xref: 'x2 domain', editable: false });
+  BP.yline(plotId, -errLim, { color: 'red', dash: 'dash',                  yref: 'y2', xref: 'x2 domain', editable: false });
 
   BP.drawTable(tableId, [
     {
       parameter: 'Position Error [deg]',
       value1: maxAbs(rows.Tr_pos_err),
       value2: maxAbs(rows.El_pos_err),
-      successCriteria: 1,
+      successCriteria: errLim,
     },
     {
       parameter: 'Current Range [A]',
       value1: sineCurrentRange(rows.Tr_current),
       value2: sineCurrentRange(rows.El_current),
-      successCriteria: 1,
+      successCriteria: currentRangeLimitA,
       successMethod: 'smaller',
     },
   ]);
@@ -355,8 +353,8 @@ function showFrictionTestResults(tr, el, plotId, tableId) {
   BP.yline(plotId, el.meanDiffBwd, { color: '#3380cc', dash: 'dash', label: `Bwd mean = ${el.meanDiffBwd.toFixed(4)} A`, yref: 'y4', xref: 'x4 domain', editable: false });
 
   BP.drawTable(tableId, [
-    { parameter: 'Forward Friction',  value1: tr.meanDiffFwd, value2: el.meanDiffFwd, successCriteria: 1 },
-    { parameter: 'Backward Friction', value1: tr.meanDiffBwd, value2: el.meanDiffBwd, successCriteria: 1 },
+    { parameter: 'Forward Friction',  value1: tr.meanDiffFwd, value2: el.meanDiffFwd, successCriteria: ATP_CONFIG.friction.limitA },
+    { parameter: 'Backward Friction', value1: tr.meanDiffBwd, value2: el.meanDiffBwd, successCriteria: ATP_CONFIG.friction.limitA },
   ]);
 }
 
@@ -403,7 +401,7 @@ async function runIBIT() {
   }
 
   // Set max velocity
-  await readMsg('R1[13]=80; R1[23]=80;');
+  await readMsg(`R1[13]=${ATP_CONFIG.testVelocity}; R1[23]=${ATP_CONFIG.testVelocity};`);
 
   // Trigger IBIT
   await sendMsg('R1[1]=5\r');
@@ -419,7 +417,7 @@ async function runIBIT() {
   // R1[51] is now included in every live-data frame; read the cached value
   // instead of issuing a separate serial request that would race with live data.
   resetLastIbitStatus();
-  const maxWaitMs = 12000;
+  const { timeoutMs: maxWaitMs, statusPass, statusFail } = ATP_CONFIG.ibit;
   const pollIntervalMs = 200;
   const pollStart = Date.now();
   let ibitResult = null;
@@ -431,8 +429,8 @@ async function runIBIT() {
     if (ibitBtn) ibitBtn.style.setProperty('--progress', `${pct}%`);
 
     const value = getLastIbitStatus();
-    if (value === 4) { ibitResult = 'success'; break; }
-    if (value === 9) { ibitResult = 'failure'; break; }
+    if (value === statusPass) { ibitResult = 'success'; break; }
+    if (value === statusFail) { ibitResult = 'failure'; break; }
   }
 
   if (ibitBtn) ibitBtn.style.setProperty('--progress', '100%');
@@ -450,17 +448,17 @@ async function runIBIT() {
 
   // Show result
   if (ibitResult === 'success') {
-    Swal.fire({ title: 'IBIT Passed ✓', text: 'IBIT completed successfully (R1[51] = 4)', icon: 'success' });
+    Swal.fire({ title: 'IBIT Passed ✓', text: `IBIT completed successfully (R1[51] = ${statusPass})`, icon: 'success' });
   } else if (ibitResult === 'failure') {
-    Swal.fire({ title: 'IBIT Failed ✗', text: 'IBIT test failed (R1[51] = 9)', icon: 'error' });
+    Swal.fire({ title: 'IBIT Failed ✗', text: `IBIT test failed (R1[51] = ${statusFail})`, icon: 'error' });
   } else {
-    Swal.fire({ title: 'IBIT Timeout', text: 'IBIT did not complete within 30 seconds', icon: 'warning' });
+    Swal.fire({ title: 'IBIT Timeout', text: `IBIT did not complete within ${maxWaitMs / 1000} seconds`, icon: 'warning' });
   }
   showIBITResults();
 }
 
 /**
- * Run Sine Test: move to random angles, run sine scenario, record 15s, return home
+ * Run Sine Test: move to TR -90°, EL 15°, run sine scenario, record 15s, return home
  */
 async function runSineTest() {
   if (!serialPort) {
@@ -480,20 +478,20 @@ async function runSineTest() {
     sineBtn.style.setProperty('--progress', '0%');
   }
 
-  // Pick random target angles
-  const randomAngTr = Math.round(Math.random() * (90 - (-190)) + (-190));
-  const randomAngEl = Math.round(Math.random() * (50 - (-10)) + (-10));
-  console.log(`Sine Test: moving to TR=${randomAngTr}°, EL=${randomAngEl}°`);
+  const sineCfg = ATP_CONFIG.sine;
+  const sineTr = sineCfg.tr.center;
+  const sineEl = sineCfg.el.center;
+  console.log(`Sine Test: moving to TR=${sineTr}°, EL=${sineEl}°`);
 
   // Set max velocity
-  await readMsg('R1[13]=80; R1[23]=80;');
+  await readMsg(`R1[13]=${ATP_CONFIG.testVelocity}; R1[23]=${ATP_CONFIG.testVelocity};`);
 
-  // Move to random angles and wait for arrival
-  moveToPosition('sine-target', randomAngTr, randomAngEl);
-  await waitForPosition(randomAngTr, randomAngEl);
+  // Move to the operating point and wait for arrival
+  moveToPosition('sine-target', sineTr, sineEl);
+  await waitForPosition(sineTr, sineEl);
 
   // Start sine scenario
-  await sendMsg(`R1[16]=10; R1[17]=40; R1[18]=${randomAngTr}; R1[26]=5; R1[27]=40; R1[28]=${randomAngEl}; R1[1]=13;`);
+  await sendMsg(sineScenarioCmd(sineCfg));
 
   // Start recording
   shouldRecordData = true;
@@ -502,8 +500,8 @@ async function runSineTest() {
   const recordButton = document.getElementById('recordButton');
   if (recordButton) recordButton.style.color = '#dc3545';
 
-  // Wait 15 seconds while updating progress bar
-  const recordDuration = 15000;
+  // Record while updating progress bar
+  const recordDuration = sineCfg.durationMs;
   const pollInterval = 200;
   const recordStart = Date.now();
   while (Date.now() - recordStart < recordDuration) {
@@ -519,7 +517,7 @@ async function runSineTest() {
   saveDataToCSV('SineTest');
 
   // Return home
-  moveToPosition('home', 0, 0);
+  moveToPosition('home', PREDEFINED_POSITIONS.home.tr, PREDEFINED_POSITIONS.home.el);
 
   if (sineBtn) sineBtn.style.setProperty('--progress', '100%');
   await new Promise(resolve => setTimeout(resolve, 300));
@@ -528,7 +526,7 @@ async function runSineTest() {
     sineBtn.style.removeProperty('--progress');
   }
 
-  finishSineTestResults(`Recorded at TR=${randomAngTr}°, EL=${randomAngEl}°`);
+  finishSineTestResults(`Recorded at TR=${sineTr}°, EL=${sineEl}°`);
 }
 
 /**
@@ -553,12 +551,12 @@ async function runFrictionTest() {
   }
 
   // Move to bottom-left at high speed and wait for arrival
-  await readMsg('R1[13]=80; R1[23]=80;');
+  await readMsg(`R1[13]=${ATP_CONFIG.testVelocity}; R1[23]=${ATP_CONFIG.testVelocity};`);
   moveToPosition('bottomLeft', PREDEFINED_POSITIONS.bottomLeft.tr, PREDEFINED_POSITIONS.bottomLeft.el);
   await waitForPosition(PREDEFINED_POSITIONS.bottomLeft.tr, PREDEFINED_POSITIONS.bottomLeft.el);
 
   // Set slow velocity for the sweep
-  await readMsg('R1[13]=10; R1[23]=10;');
+  await readMsg(`R1[13]=${ATP_CONFIG.friction.velocity}; R1[23]=${ATP_CONFIG.friction.velocity};`);
 
   // Start recording
   shouldRecordData = true;
@@ -580,7 +578,7 @@ async function runFrictionTest() {
       const remaining = Math.max(Math.abs(trEnd1 - curTr), Math.abs(elEnd1 - curEl));
       const pct = Math.min(50, Math.round((1 - remaining / dist1) * 50));
       if (frictionBtn) frictionBtn.style.setProperty('--progress', `${pct}%`);
-      if (remaining <= 0.2) break;
+      if (remaining <= ARRIVAL_TOLERANCE_DEG) break;
     }
   }
 
@@ -596,7 +594,7 @@ async function runFrictionTest() {
       const remaining = Math.max(Math.abs(trEnd2 - curTr), Math.abs(elEnd2 - curEl));
       const pct = Math.min(100, 50 + Math.round((1 - remaining / dist2) * 50));
       if (frictionBtn) frictionBtn.style.setProperty('--progress', `${pct}%`);
-      if (remaining <= 0.2) break;
+      if (remaining <= ARRIVAL_TOLERANCE_DEG) break;
     }
   }
 
@@ -607,8 +605,8 @@ async function runFrictionTest() {
   saveDataToCSV('FrictionTest');
 
   // Restore high velocity and return home
-  await readMsg('R1[13]=80; R1[23]=80;');
-  moveToPosition('home', 0, 0);
+  await readMsg(`R1[13]=${ATP_CONFIG.testVelocity}; R1[23]=${ATP_CONFIG.testVelocity};`);
+  moveToPosition('home', PREDEFINED_POSITIONS.home.tr, PREDEFINED_POSITIONS.home.el);
 
   if (frictionBtn) frictionBtn.style.setProperty('--progress', '100%');
   await new Promise(resolve => setTimeout(resolve, 300));
@@ -777,23 +775,24 @@ async function printAtpReport() {
   tempContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;overflow:hidden;background:white;';
   document.body.appendChild(tempContainer);
 
+  const ibitCfg = ATP_CONFIG.ibit;
   const testDefs = [
     {
       key: 'ibit',
       label: 'IBIT \u2014 Built-In Test',
-      description: 'The Built-In Test (IBIT) verifies the gimbal\u2019s mechanical and control integrity across its full movement range. During the test, the gimbal is commanded to traverse the entire movement sector \u2014 spanning \u00b1200\u00b0 in traverse and \u221215\u00b0 to +65\u00b0 in elevation \u2014 to confirm that the system can reach and hold positions throughout the operational envelope. Position error, velocity, and motor current are recorded continuously. The test passes when the peak position error remains within \u00b11\u00b0 throughout the sweep and motor current stays within operating limits.',
+      description: `The Built-In Test (IBIT) verifies the gimbal\u2019s mechanical and control integrity across its full movement range. During the test, the gimbal sweeps the entire movement sector \u2014 ${ibitCfg.sector.trMin}\u00b0 to ${ibitCfg.sector.trMax}\u00b0 in traverse and ${ibitCfg.sector.elMin}\u00b0 to ${ibitCfg.sector.elMax}\u00b0 in elevation \u2014 at a commanded velocity of ${ATP_CONFIG.testVelocity}\u00a0deg/s. Position and velocity are recorded continuously. The test passes when each sector limit is reached within \u00b1${ibitCfg.sectorToleranceDeg}\u00b0 and both axes reach \u00b1${ATP_CONFIG.testVelocity}\u00a0deg/s within \u00b1${ibitCfg.velocityToleranceDegS}\u00a0deg/s.`,
       render(pId, tId) { rows = vtSavedRows.ibit; showIBITResults(pId, tId); },
     },
     {
       key: 'sine',
       label: 'Sine Test \u2014 Dynamic Tracking',
-      description: 'The Sine Test evaluates the gimbal\u2019s dynamic tracking performance under sinusoidal motion commands. The system is driven with a continuous sine-wave profile on both the traverse and elevation axes simultaneously, at a randomised operating point. The test passes when the peak position error on both axes does not exceed \u00b11\u00b0, and the motor current range (max \u2212 min) on each axis remains below 1\u00a0A, throughout the manoeuvre.',
+      description: `The Sine Test evaluates the gimbal\u2019s dynamic tracking performance under sinusoidal motion commands. The system is driven with a continuous sine-wave profile on both the traverse and elevation axes simultaneously, around a fixed operating point (TR ${ATP_CONFIG.sine.tr.center}\u00b0, EL ${ATP_CONFIG.sine.el.center}\u00b0). The test passes when the peak position error on both axes does not exceed \u00b1${ATP_CONFIG.sine.posErrLimitDeg}\u00b0, and the motor current range (max \u2212 min) on each axis remains below ${ATP_CONFIG.sine.currentRangeLimitA}\u00a0A, throughout the manoeuvre.`,
       render(pId, tId) { rows = vtSavedRows.sine; showSineTestResults(pId, tId); },
     },
     {
       key: 'friction',
       label: 'Friction Test \u2014 Mechanical Resistance',
-      description: 'The Friction Test characterises the mechanical friction of the gimbal by performing a slow, constant-velocity sweep from the bottom-left to the top-right corner of the operating envelope and back. Motor current is recorded throughout both legs of the sweep. The test analyses the mean current difference between the forward and reverse directions on each axis; the test passes when this difference does not exceed 1\u00a0A on either axis, indicating balanced and acceptable friction levels.',
+      description: `The Friction Test characterises the mechanical friction of the gimbal by performing a slow, constant-velocity sweep from the bottom-left to the top-right corner of the operating envelope and back. Motor current is recorded throughout both legs of the sweep. The test analyses the mean current difference between the forward and reverse directions on each axis; the test passes when this difference does not exceed ${ATP_CONFIG.friction.limitA}\u00a0A on either axis, indicating balanced and acceptable friction levels.`,
       render(pId, tId) {
         rows = vtSavedRows.friction;
         const trFr = computeFrictionAnalysis(rows.Tr_angle, rows.Tr_current);

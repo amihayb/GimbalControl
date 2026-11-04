@@ -189,6 +189,39 @@ span {
   background: #64d7d6;
 }
 
+.position-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.position-pad button {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background-color: var(--color-btn-active);
+  color: var(--color-text-active);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.05s ease;
+}
+
+.position-pad button:hover {
+  background-color: var(--color-btn-hover-deep);
+}
+
+.position-pad button:active {
+  transform: scale(0.94);
+}
+
+.position-pad button i {
+  display: inline-block;
+}
+
 .toggle-container {
   display: flex;
   justify-content: space-between;
@@ -253,6 +286,10 @@ span {
   color: var(--color-text-primary);
   width: 60px;
   text-align: center;
+}
+
+.target-control input#systemModeInput {
+  width: 170px;
 }
 
 .target-control button {
@@ -348,8 +385,15 @@ span {
   transform: rotate(30deg);
 }
 
-#LogoBlau {
+#app-version {
   margin-left: auto;
+  margin-right: 12px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+#LogoBlau {
   margin-right: 20px;
 }
 
@@ -576,6 +620,25 @@ input[type="text"] {
   background-color: var(--color-input-bg);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
+}
+
+.scenario-submenu button {
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-btn-default);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.scenario-submenu button.primary {
+  border: none;
+  background-color: var(--color-btn-active);
+  color: var(--color-text-active);
+}
+
+.scenario-submenu button:hover {
+  background-color: var(--color-btn-hover-deep);
 }
 
 /* ==================== SweetAlert2 Theme Overrides ==================== */

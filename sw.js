@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gimbal-control-v7';
+const CACHE_NAME = 'gimbal-control-v16';
 
 const STATIC_ASSETS = [
   './',
@@ -12,11 +12,14 @@ const STATIC_ASSETS = [
   './js/constants.js',
   './js/mathUtils.js',
   './js/uiUtils.js',
+  './js/atpTests.js',
+  './js/panelUI.js',
   './js/gimbalSerial.js',
   './js/fileHandling.js',
   './js/plotting.js',
   './js/movementControl.js',
   './js/app.js',
+  './js/blauplot-bundle.js',
   './images/RafLogo.svg',
   './images/logo-title.svg',
   './images/StopSign.svg',

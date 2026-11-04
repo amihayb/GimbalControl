@@ -54,6 +54,62 @@ const PREDEFINED_POSITIONS = {
   bottomLeft: { tr: -200, el: -15 }
 };
 
+// Show/hide optional UI features (true = shown)
+const FEATURES = {
+  joystick: false,              // round joystick in the Movement Control panel
+  complexScenarios: false,      // Sine Move / Repeat Linear — not implemented yet (Start sends nothing)
+};
+
+// Max distance [deg] from a target at which an axis counts as "arrived"
+const ARRIVAL_TOLERANCE_DEG = 0.2;
+
+// Scenario profiles sent with R1[1]=13: per axis amplitude [deg], rate, center angle [deg]
+// (TR → R1[16], R1[17], R1[18]; EL → R1[26], R1[27], R1[28])
+const SCENARIOS = {
+  demo1: { tr: { amp: 2,  rate: 100, center: 90 },  el: { amp: 5,  rate: 30, center: 10 } },
+  demo2: { tr: { amp: 20, rate: 30,  center: -30 }, el: { amp: 10, rate: 30, center: 30 } },
+};
+
+// ATP test settings and pass/fail limits
+const ATP_CONFIG = {
+  testVelocity: 80,             // deg/s, set before IBIT / Sine / Friction moves and after them
+
+  ibit: {
+    timeoutMs: 12000,
+    statusPass: 4,              // R1[51] value when IBIT passed
+    statusFail: 9,              // R1[51] value when IBIT failed
+    sector: { trMax: 200, trMin: -200, elMax: 65, elMin: -15 },  // limits the IBIT sweep must reach
+    sectorToleranceDeg: 1,
+    velocityToleranceDegS: 4,   // allowed error vs. testVelocity
+  },
+
+  sine: {
+    tr: { amp: 10, rate: 40, center: -90 },
+    el: { amp: 5,  rate: 40, center: 15 },
+    durationMs: 15000,
+    posErrLimitDeg: 1,          // max |position error| on each axis
+    currentRangeLimitA: 1,      // max (current max − current min) on each axis
+  },
+
+  friction: {
+    velocity: 10,               // deg/s for the slow sweep
+    limitA: 1,                  // max mean current deviation on each branch
+  },
+};
+
+// System mode names for R1[10], shown in #systemModeInput
+const SYSTEM_MODE_NAMES = {
+  0: 'Idle',
+  1: 'Position',
+  2: 'Rate',
+  4: 'Homing',
+  5: 'IBIT',
+  8: 'Sing',
+  9: 'Restart Control',
+  12: 'Side to side Profile',
+  13: 'Sine Profile'
+};
+
 // Status types for movement control
 const MOVEMENT_STATUS_TYPES = {
   READY: 'ready',

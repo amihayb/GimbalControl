@@ -233,10 +233,10 @@ function validateVelocityInput(inputElement) {
  * Reads live position from PositionInputTR / PositionInputEL (already in degrees).
  * @param {number} targetTr - Target traverse angle [deg]
  * @param {number} targetEl - Target elevation angle [deg]
- * @param {number} tolerance - Acceptable error [deg] (default 0.2)
+ * @param {number} tolerance - Acceptable error [deg] (default ARRIVAL_TOLERANCE_DEG)
  * @param {number} timeoutMs - Max wait time in ms (default 30000)
  */
-async function waitForPosition(targetTr, targetEl, tolerance = 0.2, timeoutMs = 30000) {
+async function waitForPosition(targetTr, targetEl, tolerance = ARRIVAL_TOLERANCE_DEG, timeoutMs = 30000) {
   const pollInterval = 200;
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
