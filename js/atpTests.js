@@ -698,6 +698,10 @@ async function printAtpReport() {
   const ca7ElRaw = parseFloat(document.getElementById('vt-ca7-el')?.value);
   const hasCa7   = !isNaN(ca7TrRaw) && !isNaN(ca7ElRaw);
 
+  const zeroOffTr  = parseFloat(document.getElementById('vt-zero-offset-tr')?.value);
+  const zeroOffEl  = parseFloat(document.getElementById('vt-zero-offset-el')?.value);
+  const hasZeroOff = !isNaN(zeroOffTr) && !isNaN(zeroOffEl);
+
   const paramVersion = document.getElementById('vt-param-version')?.value.trim() || '';
   const silVersion   = document.getElementById('vt-sil-version')?.value.trim()   || '';
   const hasParamVer  = paramVersion !== '';
@@ -1021,6 +1025,7 @@ async function printAtpReport() {
           ${hasParamVer ? `<tr><td>Parameter Version</td><td>${paramVersion}</td></tr>` : ''}
           ${hasSilVer   ? `<tr><td>SIL Version</td><td>${silVersion}</td></tr>` : ''}
           ${hasCa7 ? `<tr><td>Commutation Angle CA[7]</td><td>TR: ${ca7TrRaw} &nbsp;&nbsp; EL: ${ca7ElRaw}</td></tr>` : ''}
+          ${hasZeroOff ? `<tr><td>Zero Offset S[17]</td><td>TR: ${zeroOffTr} &nbsp;&nbsp; EL: ${zeroOffEl}</td></tr>` : ''}
           <tr><td>Remarks</td><td style="white-space:pre-wrap;">${remarks}</td></tr>
         </table>
       </div>

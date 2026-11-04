@@ -288,8 +288,8 @@ function InstallationSetup() {
         </tr>
         <tr>
           <td class="param-label">Zero Offset S[17]</td>
-          <td class="param-input-cell"><input type="number" id="zero-offset-tr" class="param-input" readonly placeholder="—" /></td>
-          <td class="param-input-cell"><input type="number" id="zero-offset-el" class="param-input" readonly placeholder="—" /></td>
+          <td class="param-input-cell"><input type="number" id="zero-offset-tr" step="1" class="param-input" placeholder="counts" /></td>
+          <td class="param-input-cell"><input type="number" id="zero-offset-el" step="1" class="param-input" placeholder="counts" /></td>
         </tr>
       </tbody>
     </table>
@@ -474,6 +474,11 @@ function ViewTelemetry() {
           <td class="param-label">CA[7]</td>
           <td class="param-input-cell"><input type="number" id="vt-ca7-tr" min="0" max="4095" step="1" class="param-input" placeholder="TR" /></td>
           <td class="param-input-cell"><input type="number" id="vt-ca7-el" min="0" max="4095" step="1" class="param-input" placeholder="EL" /></td>
+        </tr>
+        <tr>
+          <td class="param-label">Zero Offset</td>
+          <td class="param-input-cell"><input type="number" id="vt-zero-offset-tr" step="1" class="param-input" placeholder="TR" /></td>
+          <td class="param-input-cell"><input type="number" id="vt-zero-offset-el" step="1" class="param-input" placeholder="EL" /></td>
         </tr>
       </tbody>
     </table>

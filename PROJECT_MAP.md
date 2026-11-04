@@ -19,7 +19,7 @@ No server is required — open `index.html` directly (or host it on GitHub Pages
 | `manifest.json` | PWA metadata — name, icons, display mode (installable as a desktop app) |
 | `sw.js` | Service Worker — caches assets for offline use |
 | `LICENSE` | License file |
-| `README.md` | Short project description |
+| `README.md` | User guide + serial protocol reference (R1 registers, Elmo fields) |
 | `PROJECT_MAP.md` | This file |
 
 ---
@@ -136,23 +136,11 @@ Key values:
 | `ViewTelemetry()` | Opens the **ATP Results** side panel (id `view-telemetry-panel`) with file choosers for IBIT, Sine Test, and Friction Test CSVs, plus metadata input fields |
 | `closeViewTelemetry()` | Closes the ATP Results panel and restores layout margins |
 
-**ATP Results panel metadata fields** (added to `vtPanel.innerHTML`, pre-filled/editable):
-- `#vt-gimbal-no` — Gimbal Number (text)
-- `#vt-operator` — Operator name (text)
-- `#vt-datetime` — Date/Time (`datetime-local`, pre-filled with current time on open)
-- `#vt-remarks` — Remarks (textarea)
+**ATP Results panel fields** (all `vt-` prefixed, read by `printAtpReport()` for the PDF cover page):
+- Metadata: gimbal no., operator, date/time (pre-filled on open), remarks
+- Driver Info (filled by `readDriverInfo()`): param version, SIL version, CA[7] TR/EL, zero offset TR/EL — see the Elmo fields table in `README.md`
 
-**ATP Results panel Driver Info fields** (populated by `readDriverInfo()`):
-- `#vt-param-version` — Parameter version combined as `"major.minor"` (read-only text)
-- `#vt-sil-version` — SIL version from `R1[99]` (read-only text)
-- `#vt-ca7-tr` — CA[7] traverse axis value (0–4095)
-- `#vt-ca7-el` — CA[7] elevation axis value (0–4095)
-
-These values are read by `printAtpReport()` to populate the PDF cover page.
-
-**Layout margin management:** Every panel open/close function adjusts `marginLeft` on three elements together: `#explenation_text`, `#plot-area`, and `#resultsTable`.
-- Panel open → `720px` (350px main sidebar + 350px panel + 20px gap)
-- Panel close → `370px` (350px main sidebar + 20px gap)
+Every panel open/close function also sets the content margins (see *Margin layout* below).
 
 ---
 
@@ -165,8 +153,9 @@ These values are read by `printAtpReport()` to populate the PDF cover page.
 | `closeSerialPort()` | Closes connection and releases locks |
 | `reconnectSerialPort()` | Closes and reopens the same port (used after `sv;` save command) |
 | `sendMsg(msg)` | Sends a command string to the gimbal |
-| `readMsg(msg)` | Sends a command and reads back the response |
-| `flushSerialReader()` | Clears stale bytes from the receive buffer |
+| `readMsg(msg, options)` | Sends a command and waits for the reply (default: until `;;`, 40 ms timeout; see JSDoc for options) |
+| `startReadLoop()` / `stopReadLoop()` | Start/stop the background receive loop |
+| `flushSerialReader()` | Waits until the port is quiet, then discards buffered bytes |
 | `showLiveData(state)` | Starts/stops a 20 ms polling loop |
 | `updateLiveData()` | Reads one telemetry snapshot, updates UI inputs, appends to `rows` if recording; also caches `R1[51]` in `lastIbitStatus` |
 | `getLastIbitStatus()` | Returns the most recent `R1[51]` value received via live data (used by `runIBIT`) |
@@ -174,11 +163,11 @@ These values are read by `printAtpReport()` to populate the PDF cover page.
 | `parsePairs(input)` | Parses `"R1[10];0;R1[31];-1226;..."` style responses |
 | `decodeRegisters(R1,R2,R3)` | Decodes three packed 32-bit registers into position/velocity/current fields |
 
-**Serial locking:** A semaphore (`serialLockDepth`) prevents the live-data loop from colliding with manual commands. `runWithSerialLock(fn)` wraps any write/read that needs exclusive access.
+**Rule — never call `reader.read()` directly.** The background loop is the only reader; it appends to `rxBuffer` and `readMsg` waits on that buffer. A second reader that times out steals the next reply and every following read comes back empty.
 
-**Alignment sentinel (`R1[125]`):** Always returns `255` and acts as a sync marker. In `updateLiveData()`, `values.indexOf(255)` finds the sentinel; the 11 data registers follow at positions `i+1`…`i+11`. If `255` is absent the frame is discarded.
+**Serial locking:** `runWithSerialLock(fn)` pauses the live-data loop while a manual command runs.
 
-**Live data command (non-packed):** `R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];R1[35];R1[45];R1[51];;` — registers at `i+1`…`i+11` are sysMode, posTr, posEl, velTr, velEl, curTr, curEl, errBits, posErrTr, posErrEl, ibitStatus.
+**Live data frame:** starts with `R1[125]`, which always returns `255`. `updateLiveData()` finds the `255` and reads the values after it; frames without it are discarded. Register list: see *Telemetry* in `README.md`.
 
 ---
 
@@ -194,7 +183,7 @@ These values are read by `printAtpReport()` to populate the PDF cover page.
 | `formatTimestamp()` | Returns `yymmdd_HHMMSS` string for filenames |
 
 CSV columns saved by `saveDataToCSV`:  
-`Time_s, Tr_Angle_deg, Tr_Velocity_deg/s, Tr_Current_A, El_Angle_deg, El_Velocity_deg/s, El_Current_A, Status`
+`Time_s, Tr_Angle_deg, Tr_Velocity_deg/s, Tr_Current_A, El_Angle_deg, El_Velocity_deg/s, El_Current_A, Tr_PosErr_deg, El_PosErr_deg, Status`
 
 ---
 
@@ -225,12 +214,15 @@ CSV columns saved by `saveDataToCSV`:
 | `runScenario(scenario)` | Runs `'scan'`, `'demo1'`, or `'demo2'` |
 | `joystickCmd(direction)` | Increments/decrements traverse or elevation by 1° |
 | `sendVelocity(v)` | Sends velocity to both axes; clamps to `MAX_VELOCITY` |
-| `setZeroAngles(axis)` | Sets current position as the zero angle for an axis |
-| `commutation(axis)` | Automated motor commutation with progress indicator; shows safety warning popup before starting |
-| `commutationStepByStep(axis)` | Step-by-step commutation using torque control; shows same safety warning (function exists but has no UI button — currently dead code; **do not remove** — planned for future UI wiring) |
-| `readCommutationAngles()` | Reads `CA[7]` from both axes (ax1, ax2) and fills `#ca7-tr` / `#ca7-el` inputs in the Installation Setup panel; also reads the zero offset `S1[17]` (TR) / `S2[17]` (EL, raw encoder counts) into the read-only `#zero-offset-tr` / `#zero-offset-el` inputs (written only via `setZeroAngles()`) |
-| `writeCommutationAngles()` | Reads `#ca7-tr` / `#ca7-el` inputs, validates 0–4095 range, writes `CA[7]` to both axes |
-| `readDriverInfo()` | Reads `UI[1]` (parameter version = `UI[1]/1000`), `R1[99]` (SIL version = `R1[99]/1000`), and `CA[7]` for both axes; populates the Driver Info section in the ATP Results panel (`#vt-param-version`, `#vt-sil-version`, `#vt-ca7-tr`, `#vt-ca7-el`) |
+| `setZeroAngles(axis)` | Sets the current position as zero for one axis (updates `S[17]`/`S[18]`, restarts the encoder) |
+| `commutation(axis)` | Automated motor commutation with progress indicator and safety warning |
+| `commutationStepByStep(axis)` | Torque-control commutation. No UI button yet — **do not remove**, planned for future use |
+| `pauseLiveDataAndFlush()` | Stops live data, turns echo on, waits 100 ms, flushes. Callers must restart live data in a `finally` block |
+| `readRegister(key, attempts = 3)` | Reads one Elmo field (e.g. `ax1.CA[7]`), retrying on a bad reply; returns `NaN` on failure |
+| `readZeroOffsets()` | Reads both zero offsets; returns `{ tr, el }` |
+| `readCommutationAngles()` | Installation Setup **Read**: CA[7] and zero offsets for both axes |
+| `writeCommutationAngles()` | Installation Setup **Write**: CA[7], plus zero offsets if filled in (asks for confirmation) |
+| `readDriverInfo()` | ATP Results **Read Driver**: param version, SIL version, CA[7], zero offsets |
 | `playTune()` | Sends `R1[1]=8` — plays a melody on the gimbal |
 | `updateMovementStatus(msg, type)` | Updates the status bar text and color |
 | `validateMovementPrerequisites()` | Checks serial is connected and motor is on |
@@ -263,6 +255,8 @@ rows = {
   El_current,     // elevation current (A)
   Tr_cmd_angle,   // traverse commanded angle (deg)
   El_cmd_angle,   // elevation commanded angle (deg)
+  Tr_pos_err,     // traverse position error (deg)
+  El_pos_err,     // elevation position error (deg)
   status          // status word
 }
 ```
@@ -285,7 +279,7 @@ Exposes `window.BP` with:
 | `BP.clearTable(containerId)` | `BlauPlot/table.js` | Empties a table container |
 | `BP.stats(arr)` | `BlauPlot/math.js` | Returns `{ mean, std, min, max, n }` |
 
-**Used by:** `showIBITResults()` in `uiUtils.js`.  
+**Used by:** the `show*Results()` functions in `atpTests.js`.  
 **Why a bundle:** `BlauPlot/*.js` uses ES module syntax (`export`), which Chrome blocks on `file://` URLs. `blauplot-bundle.js` is a manually maintained IIFE copy.
 
 ---
@@ -318,13 +312,7 @@ The original ES-module source of the BlauPlot charting library. **Not loaded dir
   .movement-panel  — (dynamically appended to body when open)
 ```
 
-**Margin layout:**
-
-| State | `#explenation_text` | `#resultsTable` | `#plot-area` |
-|---|---|---|---|
-| Default (CSS) | `margin-left: 370px` | `margin-left: 370px` (via `.plot-area` class) | `margin-left: 370px` |
-| Panel open (JS) | `720px` | `720px` | `720px` |
-| Panel closed (JS) | `370px` | `370px` | `370px` |
+**Margin layout:** `#explenation_text`, `#resultsTable` and `#plot-area` always share the same `margin-left`: `370px` by default (350px sidebar + 20px gap), `720px` while a side panel is open (+350px panel).
 
 ---
 

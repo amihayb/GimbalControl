@@ -20,6 +20,14 @@ let liveDataInProgress = false;
 let liveDataIdleResolvers = [];
 let lastUIUpdateTime = 0;
 
+// Background receive loop: the only place that calls reader.read().
+// Incoming text accumulates in rxBuffer; readMsg waits on it instead of reading the port itself,
+// so a timed-out read can never leave a pending reader.read() that steals the next response.
+let rxBuffer = '';
+let rxListener = null;
+let readLoopPromise = null;
+const RX_BUFFER_MAX = 20000;
+
 // Last R1[51] value received via live data — read by runIBIT() instead of a separate serial poll
 let lastIbitStatus = null;
 
@@ -35,6 +43,7 @@ async function requestSerialPort() {
       await serialPort.open({ baudRate: 115200 });
       writer = await serialPort.writable.getWriter();
       reader = await serialPort.readable.getReader();
+      startReadLoop();
       console.log('Serial port opened successfully!');
       return true;
   } catch (error) {
@@ -110,11 +119,74 @@ function sendMsg(message, options = {}) {
 }
 
 /**
+ * Start the background receive loop for the current reader.
+ */
+function startReadLoop() {
+  if (!reader || readLoopPromise) return;
+  const activeReader = reader;
+  const decoder = new TextDecoder();
+  rxBuffer = '';
+
+  readLoopPromise = (async () => {
+    try {
+      while (true) {
+        const { value, done } = await activeReader.read();
+        if (done) break;
+        rxBuffer += decoder.decode(value, { stream: true });
+        if (rxBuffer.length > RX_BUFFER_MAX) rxBuffer = rxBuffer.slice(-RX_BUFFER_MAX);
+        if (rxListener) rxListener();
+      }
+    } catch (error) {
+      console.warn('Serial read loop stopped:', error);
+    } finally {
+      readLoopPromise = null;
+    }
+  })();
+}
+
+/**
+ * Stop the receive loop and release the reader.
+ */
+async function stopReadLoop() {
+  const activeReader = reader;
+  reader = null;
+  if (activeReader) {
+    try { await activeReader.cancel(); } catch (e) { /* already closed */ }
+    try { activeReader.releaseLock(); } catch (e) { /* already released */ }
+  }
+  if (readLoopPromise) await readLoopPromise;
+  rxBuffer = '';
+}
+
+/**
+ * Wait until isComplete(rxBuffer) is true, or the timeout expires.
+ * @returns {Promise<boolean>} True if complete, false on timeout
+ */
+function waitForRx(isComplete, timeoutMs) {
+  return new Promise(resolve => {
+    let timer;
+    const finish = (ok) => {
+      clearTimeout(timer);
+      if (rxListener === check) rxListener = null;
+      resolve(ok);
+    };
+    const check = () => { if (isComplete(rxBuffer)) finish(true); };
+    timer = setTimeout(() => finish(false), timeoutMs);
+    rxListener = check;
+    check();
+  });
+}
+
+/**
  * Read a message from the gimbal
  * @param {string} message - Message to send before reading
  * @param {Object} options - Options object
  * @param {boolean} options.skipLock - If true, skip the serial lock
- * @returns {Promise<string>} Response from gimbal
+ * @param {(buf: string) => boolean} options.until - Response is complete when this returns true
+ *   (default: response contains ';;')
+ * @param {number} options.timeoutMs - How long to wait for a complete response (default 40)
+ * @param {boolean} options.returnPartial - On timeout, return what arrived instead of ''
+ * @returns {Promise<string>} Response from gimbal, or '' on timeout
  */
 async function readMsg(message, options = {}) {
   if (!reader) {
@@ -126,40 +198,19 @@ async function readMsg(message, options = {}) {
     return '';
   }
 
+  const isComplete = options.until || (buf => buf.includes(';;'));
+  const timeoutMs = options.timeoutMs ?? 40;
+
   const exec = async () => {
     try {
-      const sendTime = Date.now();
+      rxBuffer = '';
       await writeSerialMessage(message);
-      
-      // Read response with timeout
-      const timeoutMs = 40;
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), timeoutMs)
-      );
-      
-      const readPromise = (async () => {
-        let response = '';
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          
-          const chunk = new TextDecoder().decode(value);
-          response += chunk;
-          // console.log(`readMsg raw chunk (${Date.now() - sendTime}ms): "${chunk.replace(/\r/g, '\\r').replace(/\n/g, '\\n')}"`);
-          
-          // Check if we have a complete response (ends with semicolon or newline)
-          if (chunk.includes(';;')) {   // chunk.includes('\r')
-            break;
-          }
-        }
-        return response.trim();
-      })();
-      
-      return await Promise.race([readPromise, timeoutPromise]);
+      const ok = await waitForRx(isComplete, timeoutMs);
+      const response = rxBuffer.trim();
+      rxBuffer = '';
+      return ok || options.returnPartial ? response : '';
     } catch (error) {
-      if (error.message !== 'Timeout') {
-        console.error('Error reading from serial port:', error);
-      }
+      console.error('Error reading from serial port:', error);
       return '';
     }
   };
@@ -170,18 +221,18 @@ async function readMsg(message, options = {}) {
 /**
  * Close the serial port connection
  */
-function closeSerialPort() {
-  if (writer) {
-    writer.releaseLock();
-    writer = null;
+async function closeSerialPort() {
+  const port = serialPort;
+  const activeWriter = writer;
+  serialPort = null;
+  writer = null;
+
+  await stopReadLoop();
+  if (activeWriter) {
+    try { activeWriter.releaseLock(); } catch (e) { /* already released */ }
   }
-  if (reader) {
-    reader.releaseLock();
-    reader = null;
-  }
-  if (serialPort) {
-    serialPort.close();
-    serialPort = null;
+  if (port) {
+    try { await port.close(); } catch (e) { console.warn('Error closing serial port:', e); }
   }
   console.log('Serial port closed');
 }
@@ -198,13 +249,10 @@ async function reconnectSerialPort() {
 
   try {
     // Release locks
+    await stopReadLoop();
     if (writer) {
       writer.releaseLock();
       writer = null;
-    }
-    if (reader) {
-      reader.releaseLock();
-      reader = null;
     }
 
     // Store port reference
@@ -220,6 +268,7 @@ async function reconnectSerialPort() {
     // Get new reader and writer
     writer = await serialPort.writable.getWriter();
     reader = await serialPort.readable.getReader();
+    startReadLoop();
 
     console.log('Serial port reconnected successfully!');
     return true;
@@ -231,16 +280,20 @@ async function reconnectSerialPort() {
 }
 
 /**
- * Flush stale data from the serial buffer by waiting briefly and then
- * sending a dummy query ('px;;') and discarding its response.
- * Any buffered echoes from previous commands are consumed and thrown away,
- * leaving the buffer clean for the next real read.
+ * Flush stale data: wait until no new bytes arrive for 50 ms (max 500 ms),
+ * then discard everything received so far.
  */
 async function flushSerialReader() {
   if (!reader) return;
-  await new Promise(resolve => setTimeout(resolve, 100));
-  await readMsg('px;;\r', { skipLock: true });
-  console.log('flushSerialReader: buffer synced');
+  const deadline = Date.now() + 500;
+  while (Date.now() < deadline) {
+    const lenBefore = rxBuffer.length;
+    await new Promise(resolve => setTimeout(resolve, 50));
+    if (rxBuffer.length === lenBefore) break;
+  }
+  const discarded = rxBuffer.length;
+  rxBuffer = '';
+  console.log(`flushSerialReader: discarded ${discarded} byte(s)`);
 }
 
 // ==================== Utility Functions ====================

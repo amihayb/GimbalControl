@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gimbal-control-v3';
+const CACHE_NAME = 'gimbal-control-v7';
 
 const STATIC_ASSETS = [
   './',

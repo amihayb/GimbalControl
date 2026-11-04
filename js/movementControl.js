@@ -216,30 +216,31 @@ async function setZeroAngles(ax) {
   }
 
   updateMovementStatus(`Setting zero ${axisName}...`, 'running');
-  showLiveData(false);
-  await new Promise(resolve => setTimeout(resolve, 50));
-  await readMsg('EO=1;;\r', { skipLock: true });
+  await pauseLiveDataAndFlush();
+  try {
+    await sendMsg(`s${axisNum}[17]=s${axisNum}[17]-ax${axisNum}.px;`);
+    await flushSerialReader();
 
-  sendMsg(';\r');
-  sendMsg(`s${axisNum}[17]=s${axisNum}[17]-ax${axisNum}.px;\r`);
+    const newOffset = await readRegister(`S${axisNum}[17]`);
+    console.log(`S${axisNum}[17] = ${newOffset}`);
+    if (isNaN(newOffset)) {
+      updateMovementStatus(`Error: could not read S${axisNum}[17] — zero ${axisName} not completed`, 'error');
+      return;
+    }
 
-  const newOffset = await readMsg(`S${axisNum}[17];\r`);
-  console.log(newOffset);
+    // S[18] is the high word of the 64-bit offset: 0 for positive, -1 for negative.
+    const s18 = newOffset > 0 ? 0 : -1;
+    await sendMsg(`S${axisNum}[18]=${s18};`);
+    console.log(`S${axisNum}[18]=${s18};`);
 
-  if (parseFloat(newOffset) > 0.0) {
-    sendMsg(`S${axisNum}[18]=0;\r`);
-    console.log(`S${axisNum}[18]=0;`);
-  } else {
-    sendMsg(`S${axisNum}[18]=-1;\r`);
-    console.log(`S${axisNum}[18]=-1;`);
+    await sendMsg(`s${axisNum}[1]=0;`);    // Restart encoder
+    await sendMsg(`s${axisNum}[1]=5;`);    // Set back encoder type
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+    updateMovementStatus(`Zero ${axisName} set`, 'ready');
+  } finally {
+    await showLiveData(true);
   }
-
-  sendMsg(`s${axisNum}[1]=0;\r`);    // Restart encoder
-  sendMsg(`s${axisNum}[1]=5;\r`);    // Set back encoder type
-
-  await new Promise(resolve => setTimeout(resolve, 200));
-  updateMovementStatus(`Zero ${axisName} set`, 'ready');
-  showLiveData(true);
 }
 
 
@@ -289,11 +290,8 @@ async function commutation(axis = 2) {
     const pct = Math.round((attempt / maxAttempts) * 100);
     if (commutationBtn) commutationBtn.style.setProperty('--progress', `${pct}%`);
 
-    const mfRaw = await readMsg(`ax${axis}.MF;;`);
-    console.log(mfRaw);
-    const match = mfRaw.match(/MF[^-\d]*([-+]?\d+\.?\d*(?:[eE][+-]?\d+)?)/);
-    mf = match ? parseFloat(match[1]) : NaN;
-    if (!isNaN(mf) && mf === 128) break;
+    mf = await readRegister(`ax${axis}.MF`, 1);
+    if (mf === 128) break;
     console.warn(`Commutation in progress... attempt ${attempt + 1}: MF=${mf}`);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
@@ -309,8 +307,8 @@ async function commutation(axis = 2) {
     commutationBtn.style.removeProperty('--progress');
   }
 
-  const ca7Raw = await readMsg(`ax${axis}.CA[7];;`);
-  console.log(`Commutation complete. ${ca7Raw}`);
+  const ca7 = await readRegister(`ax${axis}.CA[7]`, 1);
+  console.log(`Commutation complete. CA[7] = ${ca7}`);
 
   await new Promise(resolve => setTimeout(resolve, 200));
   updateMovementStatus('Commutation complete', 'ready');
@@ -356,12 +354,9 @@ async function commutationStepByStep(axis = 2) {
 
   let wf40 = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
-    const wf40Raw = await readMsg(`ax${axis}.WF[40];;`);
-    console.log(wf40Raw);
-    const match = wf40Raw.match(/WF\[40\][^-\d]*([-+]?\d+\.?\d*(?:[eE][+-]?\d+)?)/);
-    wf40 = match ? parseFloat(match[1]) : NaN;
+    wf40 = await readRegister(`ax${axis}.WF[40]`, 1);
     if (!isNaN(wf40) && wf40 !== 0) break;
-    console.warn(`WF[40] read attempt ${attempt + 1} failed (got: ${wf40Raw}), retrying...`);
+    console.warn(`WF[40] read attempt ${attempt + 1} failed (got: ${wf40}), retrying...`);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   await sendMsg(`ax${axis}.MO=0;ax${axis}.UM=5;`);
@@ -436,6 +431,48 @@ function sendVelocity(v) {
 // ==================== Commutation Angle R/W ====================
 
 /**
+ * Stop live data, wait 100 ms, then flush stale bytes from the serial buffer.
+ * Callers must call showLiveData(true) when done (use try/finally).
+ */
+async function pauseLiveDataAndFlush() {
+  await showLiveData(false);
+  await sendMsg('eo=1;');    // readRegister relies on the echoed register name
+  await new Promise(resolve => setTimeout(resolve, 100));
+  await flushSerialReader();
+}
+
+/**
+ * Read one register (e.g. 'ax1.CA[7]', 'S1[17]') with echo on, retrying after a flush.
+ * The response must contain the register name (eo=1 format: "ax1.CA[7];;1030;;"),
+ * so a stale or shifted response is rejected instead of being trusted.
+ * @returns {Promise<number>} Parsed value, or NaN if all attempts failed
+ */
+async function readRegister(key, attempts = 3) {
+  const escaped = key.replace(/[\[\]\.]/g, '\\$&');
+  const pattern = new RegExp(`${escaped};+\\s*([-+]?\\d+\\.?\\d*(?:[eE][+-]?\\d+)?)\\s*;`, 'i');
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const raw = await readMsg(`${key};;`, { until: buf => pattern.test(buf), timeoutMs: 300 });
+    const match = raw && raw.match(pattern);
+    if (match) return parseFloat(match[1]);
+
+    console.warn(`Read ${key} attempt ${attempt} failed (got: "${raw}")`);
+    if (attempt < attempts) await flushSerialReader();
+  }
+  return NaN;
+}
+
+/**
+ * Read the zero offsets S1[17] (TR) and S2[17] (EL) in raw encoder counts.
+ * Returns NaN for an axis whose response could not be parsed.
+ */
+async function readZeroOffsets() {
+  const tr = await readRegister('S1[17]');
+  const el = await readRegister('S2[17]');
+  return { tr, el };
+}
+
+/**
  * Read CA[7] from both axes and populate the panel input fields.
  */
 async function readCommutationAngles() {
@@ -446,61 +483,35 @@ async function readCommutationAngles() {
 
   updateMovementStatus('Reading CA[7]...', 'running');
 
-  showLiveData(false);
-  await new Promise(resolve => setTimeout(resolve, 60));
+  await pauseLiveDataAndFlush();
+  try {
+    const trVal = await readRegister('ax1.CA[7]');
+    const elVal = await readRegister('ax2.CA[7]');
+    const { tr: trOff, el: elOff } = await readZeroOffsets();
 
-  // Drain residual live-data frames left in the USB buffer.
-  for (let i = 0; i < 10; i++) {
-    const r = await readMsg(';;', { skipLock: true });
-    if (!r) break;
+    const trOffInput = document.getElementById('zero-offset-tr');
+    const elOffInput = document.getElementById('zero-offset-el');
+    if (trOffInput) trOffInput.value = isNaN(trOff) ? '' : trOff;
+    if (elOffInput) elOffInput.value = isNaN(elOff) ? '' : elOff;
+
+    if (isNaN(trVal) || isNaN(elVal)) {
+      updateMovementStatus('Error: Could not read CA[7]', 'error');
+      return;
+    }
+
+    const trInput = document.getElementById('ca7-tr') || document.getElementById('vt-ca7-tr');
+    const elInput = document.getElementById('ca7-el') || document.getElementById('vt-ca7-el');
+    if (trInput) trInput.value = trVal;
+    if (elInput) elInput.value = elVal;
+
+    updateMovementStatus(`CA[7] read — TR: ${trVal}, EL: ${elVal} | Offset TR: ${trOff}, EL: ${elOff}`, 'ready');
+  } finally {
+    await showLiveData(true);
   }
-
-  const trRaw = await readMsg('ax1.CA[7];;');
-  const elRaw = await readMsg('ax2.CA[7];;');
-  const trOffRaw = await readMsg('S1[17];;');
-  const elOffRaw = await readMsg('S2[17];;');
-
-  const parseOffset = (raw, socket) => {
-    const match = raw && raw.match(new RegExp(`S${socket}\\[17\\];+([-+]?\\d+)`, 'i'));
-    return match ? parseFloat(match[1]) : NaN;
-  };
-
-  const trOff = parseOffset(trOffRaw, 1);
-  const elOff = parseOffset(elOffRaw, 2);
-
-  const trOffInput = document.getElementById('zero-offset-tr');
-  const elOffInput = document.getElementById('zero-offset-el');
-  if (trOffInput) trOffInput.value = isNaN(trOff) ? '' : trOff;
-  if (elOffInput) elOffInput.value = isNaN(elOff) ? '' : elOff;
-  if (isNaN(trOff) || isNaN(elOff)) console.warn('Zero offset read failed:', trOffRaw, elOffRaw);
-
-  const parseCA7 = (raw, axis) => {
-    // Response must contain the register name to be trusted (eo=1 format: "ax1.CA[7];;1030;;").
-    // Any response that lacks it (garbage, stale echo) returns NaN → error path.
-    const match = raw && raw.match(new RegExp(`ax${axis}\\.CA\\[7\\];+([-+]?\\d+)`));
-    return match ? parseFloat(match[1]) : NaN;
-  };
-
-  const trVal = parseCA7(trRaw, 1);
-  const elVal = parseCA7(elRaw, 2);
-
-  if (isNaN(trVal) || isNaN(elVal)) {
-    showLiveData(true);
-    updateMovementStatus('Error: Could not read CA[7]', 'error');
-    return;
-  }
-
-  const trInput = document.getElementById('ca7-tr') || document.getElementById('vt-ca7-tr');
-  const elInput = document.getElementById('ca7-el') || document.getElementById('vt-ca7-el');
-  if (trInput) trInput.value = trVal;
-  if (elInput) elInput.value = elVal;
-
-  showLiveData(true);
-  updateMovementStatus(`CA[7] read — TR: ${trVal}, EL: ${elVal} | Offset TR: ${trOff}, EL: ${elOff}`, 'ready');
 }
 
 /**
- * Read parameter version (UI[1]/1000), SIL version (R1[99]/1000), and CA[7] from both
+ * Read parameter version (UF[1], unscaled), SIL version (R1[99]/1000), and CA[7] from both
  * axes, then populate the Driver Info fields in the ATP Results (view-telemetry) panel.
  */
 async function readDriverInfo() {
@@ -511,57 +522,43 @@ async function readDriverInfo() {
 
   updateMovementStatus('Reading driver info...', 'running');
 
-  showLiveData(false);
-  await new Promise(resolve => setTimeout(resolve, 60));
+  await pauseLiveDataAndFlush();
+  try {
+    const paramVer = await readRegister('UF[1]');
+    const sil      = (await readRegister('R1[99]')) / 1000;
+    const trVal    = await readRegister('ax1.CA[7]');
+    const elVal    = await readRegister('ax2.CA[7]');
+    const { tr: trOff, el: elOff } = await readZeroOffsets();
 
-  for (let i = 0; i < 10; i++) {
-    const r = await readMsg(';;', { skipLock: true });
-    if (!r) break;
+    const trOffInput = document.getElementById('vt-zero-offset-tr');
+    const elOffInput = document.getElementById('vt-zero-offset-el');
+    if (trOffInput) trOffInput.value = isNaN(trOff) ? '' : trOff;
+    if (elOffInput) elOffInput.value = isNaN(elOff) ? '' : elOff;
+
+    if (isNaN(paramVer) || isNaN(sil) || isNaN(trVal) || isNaN(elVal)) {
+      updateMovementStatus('Error: Could not read driver info', 'error');
+      return;
+    }
+
+    const paramVerEl = document.getElementById('vt-param-version');
+    const silVerEl   = document.getElementById('vt-sil-version');
+    const trInput    = document.getElementById('vt-ca7-tr');
+    const elInput    = document.getElementById('vt-ca7-el');
+
+    if (paramVerEl) paramVerEl.value = paramVer;
+    if (silVerEl)   silVerEl.value   = sil;
+    if (trInput)    trInput.value    = trVal;
+    if (elInput)    elInput.value    = elVal;
+
+    updateMovementStatus(`Driver info read — Param v${paramVer}, SIL ${sil}, CA[7] TR: ${trVal} EL: ${elVal}, Offset TR: ${trOff} EL: ${elOff}`, 'ready');
+  } finally {
+    await showLiveData(true);
   }
-
-  const ui1Raw  = await readMsg('UI[1];;');
-  const silRaw  = await readMsg('R1[99];;');
-  const trRaw   = await readMsg('ax1.CA[7];;');
-  const elRaw   = await readMsg('ax2.CA[7];;');
-
-  const parseNum = (raw, key) => {
-    const escaped = key.replace(/[\[\]\.]/g, '\\$&');
-    const match = raw && raw.match(new RegExp(`${escaped};+([-+]?\\d+\\.?\\d*(?:[eE][+-]?\\d+)?)`));
-    return match ? parseFloat(match[1]) : NaN;
-  };
-
-  const parseCA7 = (raw, axis) => {
-    const match = raw && raw.match(new RegExp(`ax${axis}\\.CA\\[7\\];+([-+]?\\d+)`));
-    return match ? parseFloat(match[1]) : NaN;
-  };
-
-  const paramVer = parseNum(ui1Raw, 'UI[1]') / 1000;
-  const sil      = parseNum(silRaw, 'R1[99]') / 1000;
-  const trVal    = parseCA7(trRaw, 1);
-  const elVal    = parseCA7(elRaw, 2);
-
-  if (isNaN(paramVer) || isNaN(sil) || isNaN(trVal) || isNaN(elVal)) {
-    showLiveData(true);
-    updateMovementStatus('Error: Could not read driver info', 'error');
-    return;
-  }
-
-  const paramVerEl = document.getElementById('vt-param-version');
-  const silVerEl   = document.getElementById('vt-sil-version');
-  const trInput    = document.getElementById('vt-ca7-tr');
-  const elInput    = document.getElementById('vt-ca7-el');
-
-  if (paramVerEl) paramVerEl.value = paramVer;
-  if (silVerEl)   silVerEl.value   = sil;
-  if (trInput)    trInput.value    = trVal;
-  if (elInput)    elInput.value    = elVal;
-
-  showLiveData(true);
-  updateMovementStatus(`Driver info read — Param v${paramVer}, SIL ${sil}, CA[7] TR: ${trVal} EL: ${elVal}`, 'ready');
 }
 
 /**
- * Write the values from the panel input fields to CA[7] on both axes.
+ * Write the values from the panel input fields to CA[7] on both axes, and to the
+ * zero offsets S1[17] / S2[17] for any offset field that is filled in.
  */
 async function writeCommutationAngles() {
   if (!serialPort) {
@@ -580,8 +577,48 @@ async function writeCommutationAngles() {
     return;
   }
 
+  const offsets = [
+    { socket: 1, raw: document.getElementById('zero-offset-tr')?.value.trim() ?? '' },
+    { socket: 2, raw: document.getElementById('zero-offset-el')?.value.trim() ?? '' },
+  ].filter(o => o.raw !== '');
+
+  if (offsets.some(o => !/^[-+]?\d+$/.test(o.raw))) {
+    updateMovementStatus('Error: Zero offset values must be integers', 'error');
+    return;
+  }
+
+  if (offsets.length > 0) {
+    const result = await Swal.fire({
+      title: 'Write Zero Offset',
+      text: 'Writing the zero offset changes the zero position of the axis. Continue?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Write',
+      cancelButtonText: 'Cancel'
+    });
+    if (!result.isConfirmed) return;
+  }
+
   await sendMsg(`ax1.CA[7]=${trVal};ax2.CA[7]=${elVal};`);
-  updateMovementStatus(`CA[7] written — TR: ${trVal}, EL: ${elVal}`, 'ready');
+
+  if (offsets.length > 0) {
+    await pauseLiveDataAndFlush();
+    try {
+      for (const { socket, raw } of offsets) {
+        const val = parseInt(raw, 10);
+        // S[18] is the high word of the 64-bit offset: 0 for positive, -1 for negative.
+        await sendMsg(`S${socket}[17]=${val};S${socket}[18]=${val > 0 ? 0 : -1};`);
+        await sendMsg(`s${socket}[1]=0;`);    // Restart encoder
+        await sendMsg(`s${socket}[1]=5;`);    // Set back encoder type
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+    } finally {
+      await showLiveData(true);
+    }
+  }
+
+  const offMsg = offsets.map(o => `S${o.socket}[17]=${o.raw}`).join(', ');
+  updateMovementStatus(`CA[7] written — TR: ${trVal}, EL: ${elVal}${offMsg ? ' | ' + offMsg : ''}`, 'ready');
 }
 
 // ==================== Status Functions ====================

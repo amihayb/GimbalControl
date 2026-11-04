@@ -132,27 +132,22 @@ Example (sine test):
 
 ### Telemetry — reading live data
 
-The app polls telemetry every ~20 ms. Two read modes exist in `gimbalSerial.js` (default is the **7-register** method):
-
-**Standard read** (current default):
+The app polls telemetry every 20 ms with echo off (`eo=0`):
 
 ```
-R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];;
+R1[125];R1[10];R1[31];R1[41];R1[33];R1[43];R1[34];R1[44];R1[9];R1[35];R1[45];R1[51];;
 ```
 
 | Register | Meaning | Display scaling |
 |---|---|---|
-| `R1[125]` | Alignment sentinel — always **255**; used to sync the response | — |
+| `R1[125]` | Alignment marker — always **255**; frames without it are discarded | — |
 | `R1[10]` | System mode | raw |
-| `R1[31]` | Traverse position | ÷ 10 → degrees |
-| `R1[41]` | Elevation position | ÷ 10 → degrees |
-| `R1[33]` | Traverse velocity | ÷ 10 → deg/s |
-| `R1[43]` | Elevation velocity | ÷ 10 → deg/s |
-| `R1[34]` | Traverse current | ÷ 1000 → A |
-| `R1[44]` | Elevation current | ÷ 1000 → A |
-| `R1[9]` | Error bit flags (32-bit) | see below |
-
-If `255` is missing from the response, the frame is discarded (stale bytes from a previous read).
+| `R1[31]`, `R1[41]` | Position TR, EL | ÷ 1000 → degrees |
+| `R1[33]`, `R1[43]` | Velocity TR, EL | ÷ 1000 → deg/s |
+| `R1[34]`, `R1[44]` | Current TR, EL | ÷ 1000 → A |
+| `R1[9]` | Error bit flags | see below |
+| `R1[35]`, `R1[45]` | Position error TR, EL | recorded only |
+| `R1[51]` | IBIT status | see below |
 
 **Packed read** (optional — set `USE_PACKED_REGISTERS = true` in code):
 
@@ -189,27 +184,16 @@ Each bit being **1** means an error; **0** means OK. The sidebar shows decoded n
 | 9 | Input message timeout |
 | 10 | Input message checksum error |
 
-### Quick reference — registers used by this app
+### Elmo fields — installation and driver info
 
-| Register | R/W | Role |
-|---|---|---|
-| `R1[1]` | W | Command / mode |
-| `R1[3]` | W | Connection enable |
-| `R1[9]` | R | Error flags |
-| `R1[10]` | R | System mode |
-| `R1[11]`, `R1[21]` | W | Target angles (TR, EL) |
-| `R1[12]`, `R1[22]` | W | Joystick offsets |
-| `R1[13]`, `R1[23]` | W | Max velocity (TR, EL) |
-| `R1[16]`–`R1[18]` | W | Traverse scenario params |
-| `R1[26]`–`R1[28]` | W | Elevation scenario params |
-| `R1[31]`, `R1[41]` | R | Position (TR, EL) |
-| `R1[33]`, `R1[43]` | R | Velocity (TR, EL) |
-| `R1[34]`, `R1[44]` | R | Current (TR, EL) |
-| `R1[51]` | R | IBIT result / packed telemetry word 1 |
-| `R1[52]`, `R1[53]` | R | Packed telemetry words 2–3 |
-| `R1[125]` | R | Alignment sentinel (255) |
+Commutation, zero offset and driver info use Elmo fields instead of `R1[x]`. They are read with echo on (`eo=1`), so the reply repeats the field name: `ax1.CA[7];;1030;`.
 
-> **Note:** Low-level motor setup (commutation, zero angle) uses Elmo axis commands (`ax1`, `ax2`, `S1`, `S2`) rather than `R1[x]`. See `js/movementControl.js`.
+| Field | Meaning |
+|---|---|
+| `ax1.CA[7]`, `ax2.CA[7]` | Commutation angle TR, EL (0–4095) |
+| `S1[17]`, `S2[17]` | Zero offset TR, EL (encoder counts). `S[18]` is set with it: `0` if positive, `-1` otherwise |
+| `UF[1]` | Parameter version (no scaling) |
+| `R1[99]` | SIL version (÷ 1000) |
 
 ---
 
