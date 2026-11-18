@@ -2,7 +2,7 @@
  * Panel UI — Side-panel open/close functions.
  * Builds and destroys the Movement Control, Installation Setup, and ATP side panels,
  * and adjusts content-area margins so nothing is hidden behind the panels.
- * Depends on: uiUtils.js, atpTests.js (runIBIT, runSineTest, runFrictionTest),
+ * Depends on: uiUtils.js, atpTests.js (runIBIT, runSineTest, runFrictionTest, runLimitsTorqueTest),
  *             movementControl.js (sendToAngles, joystickCmd, moveToPosition, runScenario,
  *                                  setZeroAngles, commutation, saveElmo, sendVelocity)
  */
@@ -375,6 +375,7 @@ function ATP() {
       <a class="button" id="btn-atp-ibit" onclick="runIBIT()">IBIT</a>
       <a class="button" id="btn-atp-sine" onclick="runSineTest()">Sine Test</a>
       <a class="button" id="btn-atp-friction" onclick="runFrictionTest()">Friction Test</a>
+      <a class="button" id="btn-atp-limits" onclick="runLimitsTorqueTest()">Limits Torque</a>
     </div>
   `;
 
@@ -537,6 +538,21 @@ function ViewTelemetry() {
     </div>
 
     <hr>
+    <h2>Limits Torque</h2>
+    <div class="vt-test-section">
+      <input type="file" id="vt-file-limits" accept=".csv" style="display:none">
+      <div class="vt-row">
+        <span class="vt-icon-btn vt-choose-btn" onclick="document.getElementById('vt-file-limits').click()" title="Load file">
+          <i class="fa fa-folder-open"></i>
+        </span>
+        <span id="vt-filename-limits" class="vt-filename-label">No file chosen</span>
+        <span class="vt-icon-btn vt-show-btn vt-disabled" id="vt-show-limits" onclick="vtShowLimitsTorqueResults()" title="Show Results">
+          <i class="fa fa-bar-chart"></i>
+        </span>
+      </div>
+    </div>
+
+    <hr>
     <a class="button vt-print-btn" id="btn-print-pdf" onclick="printAtpReport()" style="display:none;">
       Print to PDF
     </a>
@@ -558,7 +574,7 @@ function ViewTelemetry() {
 
   // Wire each file input: update the filename label, enable the Show Results button,
   // then hand the file to the existing readFile loader which routes to handleAtpCsvLoaded.
-  ['ibit', 'sine', 'friction'].forEach(testType => {
+  ['ibit', 'sine', 'friction', 'limits'].forEach(testType => {
     const input   = document.getElementById(`vt-file-${testType}`);
     const label   = document.getElementById(`vt-filename-${testType}`);
     const showBtn = document.getElementById(`vt-show-${testType}`);

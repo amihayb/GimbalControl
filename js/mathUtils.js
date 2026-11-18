@@ -231,6 +231,21 @@ const maxAbs = (arr) => Math.max(...arr.map(Math.abs));
 const minAbs = (arr) => Math.min(...arr.map(Math.abs));
 
 /**
+ * Percentile with linear interpolation between samples
+ * @param {Array} arr - Input array
+ * @param {number} p - Percentile, 0..100
+ * @returns {number} Value below which p% of the samples fall, or NaN for an empty array
+ */
+function percentile(arr, p) {
+  if (!arr || arr.length === 0) return NaN;
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const pos = (sorted.length - 1) * p / 100;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+/**
  * Find maximum negative value in array
  * @param {Array} arr - Input array
  * @returns {number} Maximum negative value or minimum value if no negatives
@@ -555,6 +570,7 @@ window.derivative = derivative;
 window.minPositive = minPositive;
 window.maxAbs = maxAbs;
 window.minAbs = minAbs;
+window.percentile = percentile;
 window.maxNegative = maxNegative;
 window.min = min;
 window.max = max;

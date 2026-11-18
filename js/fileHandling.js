@@ -87,7 +87,7 @@ function readFile(file) {
     if (!rows['status']) rows['status'] = [];
 
     const name = file.name || '';
-    const isAtpCsv = /^(FrictionTest|IBIT|SineTest)_/i.test(name.replace(/\.csv$/i, ''));
+    const isAtpCsv = /^(FrictionTest|IBIT|SineTest|LimitsTorque)_/i.test(name.replace(/\.csv$/i, ''));
     if (isAtpCsv && typeof handleAtpCsvLoaded === 'function') {
       handleAtpCsvLoaded(name);
     } else if (typeof showTorqueTest === 'function') {

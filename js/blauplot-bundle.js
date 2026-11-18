@@ -232,7 +232,9 @@
     data.forEach(function (item) {
       const pass = item.successMethod === 'bigger'
         ? item.value > item.successCriteria
-        : item.value < item.successCriteria;
+        : item.successMethod === 'smallerOrEqual'
+          ? item.value <= item.successCriteria
+          : item.value < item.successCriteria;
 
       const tr = document.createElement('tr');
       tr.appendChild(makeCell(item.parameter));

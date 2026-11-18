@@ -50,7 +50,7 @@ Key values:
 - `FEATURES` — show/hide optional UI (developer setting, not a user toggle). `joystick: false` hides the round joystick in Movement Control; `complexScenarios: false` hides Sine Move / Repeat Linear (their `startSineMove()` / `startLinearMove()` are unimplemented stubs)
 - `ARRIVAL_TOLERANCE_DEG` — distance at which an axis counts as "arrived" (`waitForPosition`, friction sweep)
 - `SCENARIOS` — Demo 1 / Demo 2 profiles (amplitude, rate, center per axis), sent via `sineScenarioCmd()`
-- `ATP_CONFIG` — all ATP test settings and pass/fail limits: `testVelocity`, `ibit` (timeout, status codes, sector, tolerances), `sine` (profile, duration, limits), `friction` (sweep velocity, limit). Plots, tables, popups and PDF report text read their limits from here
+- `ATP_CONFIG` — all ATP test settings and pass/fail limits: `testVelocity`, `ibit` (timeout, status codes, sector, tolerances), `sine` (profile, duration, limits), `friction` (sweep velocity, limit), `limitsTorque` (move timeout, settle delay, record time per corner, percentile, TR/EL current limits). Plots, tables, popups and PDF report text read their limits from here
 - `SYSTEM_MODE_NAMES` — `R1[10]` value → name, shown as e.g. "1 – Position" in `#systemModeInput`
 - `MOVEMENT_STATUS_TYPES`, `STATUS_COLORS`
 - `initialRows` — blank template for the `rows` recording object
@@ -69,6 +69,7 @@ Key values:
 | `fixAngle(y)` | Unwrap angle (fix 360° wrapping jumps) |
 | `std(v)` | Standard deviation |
 | `fitLinear(x, y)` | Linear regression (slope + bias) |
+| `percentile(arr, p)` | p-th percentile (0..100, linear interpolation); `NaN` for an empty array |
 | `mult`, `plus`, `minusArrays`, etc. | Array arithmetic shortcuts |
 | `applySignalProcessing(rows)` | Copies rows, scales time/angles/currents to physical units, applies median filter |
 | `createStreamingMedian5()` | Rolling 5-sample median filter (used for live angle smoothing) |
@@ -109,17 +110,25 @@ Key values:
 | `runIBIT()` | Full IBIT procedure: connect check, trigger, record, poll R1[51], save CSV |
 | `runSineTest()` | Moves to TR −90°, EL 15°, runs sine scenario, records 15 s, saves CSV, returns home |
 | `runFrictionTest()` | Slow sweep bottom-left → top-right → bottom-left, records throughout, saves CSV |
-| `vtMarkTestLoaded(type)` | Saves `rows` snapshot into `vtSavedRows`, enables Show Results button, checks if all 3 loaded |
+| `runLimitsTorqueTest()` | Visits top-right → top-left → bottom-left → bottom-right (`PREDEFINED_POSITIONS`), then home. At each corner: wait for arrival (`moveTimeoutMs`, a timed-out corner is skipped and fails), wait `settleDelayMs`, record `recordMs`. Recording pauses during moves and `startTime` is shifted so the segments are back-to-back in time. Saves one `LimitsTorque_*.csv` |
+| `limitsTorqueCheckValues()` | Splits samples into corners by angle (TR sign, EL above/below mid-height — so a reloaded CSV needs no extra column) and returns P95 of \|current\| per corner and axis; `NaN` for a corner with no samples |
+| `limitsTorqueTestPassed(checks?)` | Pass when every corner has data and P95 ≤ `trLimitA` / `elLimitA` |
+| `finishLimitsTorqueResults(silent?, timedOut?)` | Popup (names timed-out corners) + `showLimitsTorqueResults()` |
+| `showLimitsTorqueResults(plotId?, tableId?)` | 2×2 plot (angles, currents with limit lines) + 8-row table (corner × axis, `'no data'` in red when missing) |
+| `vtMarkTestLoaded(type)` | Saves `rows` snapshot into `vtSavedRows`, enables Show Results button, checks if all tests loaded |
 | `resetVtLoadedTests()` | Clears `vtSavedRows` and `vtLoadedTests` state |
 | `checkAllTestsLoaded()` | Shows Print to PDF button when all 3 tests are loaded |
 | `vtShowIbitResults()` | Re-displays IBIT from saved snapshot (no popup) |
 | `vtShowSineResults()` | Re-displays Sine Test from saved snapshot |
 | `vtShowFrictionResults()` | Re-displays Friction Test from saved snapshot |
+| `vtShowLimitsTorqueResults()` | Re-displays Limits Torque from saved snapshot |
 | `printAtpReport()` | Builds and opens a print-ready PDF report — reads metadata from panel fields, captures plots with forced white theme, includes logo header (repeats every page via `<thead>`), summary page with per-test pass/fail and overall result |
 
 **`silent` parameter on `finish*` functions:** when `true`, skips the pass/fail SweetAlert popup. Used when loading CSVs from the ATP Results panel.
 
-**`vtSavedRows`:** module-level object `{ ibit, sine, friction }` holding deep copies of `rows` for each loaded test — used by `printAtpReport` and the `vtShow*` functions.
+**CSV routing:** files are routed by filename prefix (`IBIT_`, `SineTest_`, `FrictionTest_`, `LimitsTorque_`) — both in `readFile()` (`fileHandling.js`) and `handleAtpCsvLoaded()`. A new ATP test must be added to both.
+
+**`vtSavedRows`:** module-level object `{ ibit, sine, friction, limits }` holding deep copies of `rows` for each loaded test — used by `printAtpReport` and the `vtShow*` functions.
 
 **Depends on:** `uiUtils.js` (`waitForPosition`), `gimbalSerial.js`, `fileHandling.js`, `movementControl.js`, `blauplot-bundle.js` (`window.BP`), `mathUtils.js` (`minAbs`, `plus`), `app.js` (`rows`, `shouldRecordData`, `startTime`).
 
@@ -138,7 +147,7 @@ Key values:
 | `closeInstallationSetup()` | Closes it and restores layout margins |
 | `ATP()` | Opens the ATP test side panel |
 | `closeATP()` | Closes it and restores layout margins |
-| `ViewTelemetry()` | Opens the **ATP Results** side panel (id `view-telemetry-panel`) with file choosers for IBIT, Sine Test, and Friction Test CSVs, plus metadata input fields |
+| `ViewTelemetry()` | Opens the **ATP Results** side panel (id `view-telemetry-panel`) with file choosers for IBIT, Sine Test, Friction Test and Limits Torque CSVs, plus metadata input fields |
 | `closeViewTelemetry()` | Closes the ATP Results panel and restores layout margins |
 
 **ATP Results panel fields** (all `vt-` prefixed, read by `printAtpReport()` for the PDF cover page):
@@ -282,7 +291,7 @@ Exposes `window.BP` with:
 | `BP.buildLayout(rows, cols, opts)` | `BlauPlot/plot.js` | Builds a Plotly layout for an N×M subplot grid |
 | `BP.plot(containerId, traces, layout, config?)` | `BlauPlot/plot.js` | Calls `Plotly.newPlot` |
 | `BP.yline(containerId, value, opts)` | `BlauPlot/plot.js` | Adds a horizontal limit/threshold line |
-| `BP.drawTableOneCol(containerId, data)` | `BlauPlot/table.js` | Renders a 3-column pass/fail table (Parameter, Value, Criteria) |
+| `BP.drawTableOneCol(containerId, data)` | `BlauPlot/table.js` | Renders a 3-column pass/fail table (Parameter, Value, Criteria). `successMethod`: `'smaller'` (default, `<`), `'smallerOrEqual'` (`<=`), `'bigger'` (`>`); a text value always shows red |
 | `BP.clearTable(containerId)` | `BlauPlot/table.js` | Empties a table container |
 | `BP.stats(arr)` | `BlauPlot/math.js` | Returns `{ mean, std, min, max, n }` |
 

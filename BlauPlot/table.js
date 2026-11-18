@@ -112,15 +112,17 @@ export function drawTable(container, data, options = {}) {
 /**
  * Render a single-value pass/fail table.
  * Success is determined by successMethod:
- *   'bigger'  — pass if value > successCriteria
- *   'smaller' — pass if value < successCriteria
+ *   'bigger'         — pass if value > successCriteria
+ *   'smaller'        — pass if value < successCriteria (default)
+ *   'smallerOrEqual' — pass if value <= successCriteria
+ * A non-numeric value (e.g. 'no data') is shown as text and always fails.
  *
  * @param {string|HTMLElement} container
  * @param {Array<{
  *   parameter: string,
- *   value: number,
+ *   value: number|string,
  *   successCriteria: number,
- *   successMethod: 'bigger' | 'smaller'
+ *   successMethod: 'bigger' | 'smaller' | 'smallerOrEqual'
  * }>} data
  */
 export function drawTableOneCol(container, data) {
@@ -138,7 +140,9 @@ export function drawTableOneCol(container, data) {
   data.forEach(item => {
     const pass = item.successMethod === "bigger"
       ? item.value > item.successCriteria
-      : item.value < item.successCriteria;
+      : item.successMethod === "smallerOrEqual"
+        ? item.value <= item.successCriteria
+        : item.value < item.successCriteria;
 
     const tr = document.createElement("tr");
     tr.appendChild(makeCell(item.parameter));

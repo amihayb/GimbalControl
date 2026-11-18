@@ -1,6 +1,6 @@
 /**
  * ATP Test Sequences
- * IBIT, Sine Test, Friction Test — serial-driven test flows with recording and results display.
+ * IBIT, Sine Test, Friction Test, Limits Torque — serial-driven test flows with recording and results display.
  * Depends on: uiUtils.js (waitForPosition), gimbalSerial.js, fileHandling.js, movementControl.js,
  *             blauplot-bundle.js (window.BP), mathUtils.js (minAbs, plus), app.js (rows, shouldRecordData, startTime)
  */
@@ -8,9 +8,9 @@
 // ==================== View Telemetry State ====================
 
 // Per-test saved row snapshots for PDF report generation
-let vtSavedRows  = { ibit: null, sine: null, friction: null };
+let vtSavedRows  = { ibit: null, sine: null, friction: null, limits: null };
 // Which tests have been loaded via the View Telemetry panel
-let vtLoadedTests = { ibit: false, sine: false, friction: false };
+let vtLoadedTests = { ibit: false, sine: false, friction: false, limits: false };
 
 /**
  * Return a BlauPlot theme config by reading the active CSS variables.
@@ -107,6 +107,45 @@ function frictionTestPassed(tr, el) {
       && el.meanDiffFwd <= lim && el.meanDiffBwd <= lim;
 }
 
+const LIMITS_TORQUE_CORNERS = [
+  { key: 'topRight',    label: 'Top-Right'    },
+  { key: 'topLeft',     label: 'Top-Left'     },
+  { key: 'bottomLeft',  label: 'Bottom-Left'  },
+  { key: 'bottomRight', label: 'Bottom-Right' },
+];
+
+/** Which corner a sample belongs to, from its angles (TR sign, EL above/below the mid-height). */
+function limitsTorqueCornerOf(tr, el) {
+  const elMid = (PREDEFINED_POSITIONS.topRight.el + PREDEFINED_POSITIONS.bottomRight.el) / 2;
+  return (el > elMid ? 'top' : 'bottom') + (tr > 0 ? 'Right' : 'Left');
+}
+
+/**
+ * Limits Torque check values: P95 of |current| per corner and axis.
+ * A corner with no samples (its move timed out) gets NaN on both axes.
+ */
+function limitsTorqueCheckValues() {
+  const byCorner = {};
+  LIMITS_TORQUE_CORNERS.forEach(c => { byCorner[c.key] = { tr: [], el: [] }; });
+  for (let i = 0; i < rows.time.length; i++) {
+    const bucket = byCorner[limitsTorqueCornerOf(rows.Tr_angle[i], rows.El_angle[i])];
+    bucket.tr.push(Math.abs(rows.Tr_current[i]));
+    bucket.el.push(Math.abs(rows.El_current[i]));
+  }
+  const p = ATP_CONFIG.limitsTorque.percentile;
+  return LIMITS_TORQUE_CORNERS.map(c => ({
+    ...c,
+    n:  byCorner[c.key].tr.length,
+    tr: percentile(byCorner[c.key].tr, p),
+    el: percentile(byCorner[c.key].el, p),
+  }));
+}
+
+function limitsTorqueTestPassed(checks = limitsTorqueCheckValues()) {
+  const { trLimitA, elLimitA } = ATP_CONFIG.limitsTorque;
+  return checks.every(c => c.n > 0 && c.tr <= trLimitA && c.el <= elLimitA);
+}
+
 function showAtpPassFailSwal(testName, passed, detail) {
   Swal.fire({
     title: passed ? `${testName} Passed ✓` : `${testName} Failed ✗`,
@@ -146,6 +185,31 @@ function finishFrictionTestResults(silent = false) {
     ? `Mean friction deviation ≤ ${ATP_CONFIG.friction.limitA} A on all branches.`
     : `Worst mean deviation: ${worst.toFixed(4)} A (limit ${ATP_CONFIG.friction.limitA} A).`);
   showFrictionTestResults(tr, el);
+}
+
+/**
+ * @param {boolean} [silent=false]   - skip the pass/fail popup
+ * @param {string[]} [timedOut=[]]   - labels of corners the gimbal did not reach in time (live run only)
+ */
+function finishLimitsTorqueResults(silent = false, timedOut = []) {
+  const { trLimitA, elLimitA, percentile: p } = ATP_CONFIG.limitsTorque;
+  const checks = limitsTorqueCheckValues();
+  const passed = limitsTorqueTestPassed(checks);
+  if (!silent) {
+    const failures = checks
+      .filter(c => c.n > 0 && (c.tr > trLimitA || c.el > elLimitA))
+      .map(c => `${c.label}: Tr=${c.tr.toFixed(3)} A, El=${c.el.toFixed(3)} A`);
+    const missing = checks.filter(c => c.n === 0).map(c => c.label);
+    const parts = [];
+    if (timedOut.length) parts.push(`Movement timeout at: ${timedOut.join(', ')}.`);
+    const noDataOther = missing.filter(l => !timedOut.includes(l));
+    if (noDataOther.length) parts.push(`No data at: ${noDataOther.join(', ')}.`);
+    if (failures.length) parts.push(`P${p} |current| over limit — ${failures.join(' | ')}`);
+    showAtpPassFailSwal('Limits Torque', passed, passed
+      ? `P${p} |current| ≤ ${trLimitA} A (Tr) and ≤ ${elLimitA} A (El) at all 4 corners.`
+      : parts.join(' '));
+  }
+  showLimitsTorqueResults();
 }
 
 /**
@@ -359,6 +423,59 @@ function showFrictionTestResults(tr, el, plotId, tableId) {
 }
 
 /**
+ * Render Limits Torque results: 2×2 angle/current subplot and an 8-row P95 table (corner × axis).
+ * @param {string} [plotId='plot']         - ID of the target plot container element.
+ * @param {string} [tableId='resultsTable'] - ID of the target table container element.
+ */
+function showLimitsTorqueResults(plotId, tableId) {
+  plotId  = plotId  || 'plot';
+  tableId = tableId || 'resultsTable';
+
+  if (plotId === 'plot') {
+    const welcomeEl = document.getElementById('explenation_text');
+    if (welcomeEl) welcomeEl.style.display = 'none';
+    const plotArea = document.getElementById('plot-area');
+    while (plotArea.firstChild) plotArea.removeChild(plotArea.firstChild);
+    const plotDiv = document.createElement('div');
+    plotDiv.id = 'plot';
+    plotArea.appendChild(plotDiv);
+  }
+
+  const gridOptions = { gridRows: 2, gridCols: 2, pattern: 'independent' };
+  const traces = [
+    BP.buildLine('Tr_angle',   rows, 1, 'time', gridOptions),
+    BP.buildLine('El_angle',   rows, 2, 'time', gridOptions),
+    BP.buildLine('Tr_current', rows, 3, 'time', gridOptions),
+    BP.buildLine('El_current', rows, 4, 'time', gridOptions),
+  ];
+  const theme = getPlotTheme();
+  const layout = BP.buildLayout(2, 2, { pattern: 'independent', roworder: 'top to bottom', theme });
+  layout.yaxis.title  = { ...layout.yaxis.title,  text: 'angle [deg]' };
+  layout.yaxis3.title = { ...layout.yaxis3.title, text: 'Current [amp]' };
+  const titleStyle = { showarrow: false, x: 0.5, y: 1, xanchor: 'center', yanchor: 'bottom', font: { color: theme.textPrimary } };
+  layout.annotations = [
+    { ...titleStyle, text: 'Traverse<br>Position',      xref: 'x domain',  yref: 'y domain'  },
+    { ...titleStyle, text: 'Elevation<br>Position',     xref: 'x2 domain', yref: 'y2 domain' },
+    { ...titleStyle, text: 'Traverse<br>Motor Current', xref: 'x3 domain', yref: 'y3 domain' },
+    { ...titleStyle, text: 'Elevation<br>Motor Current', xref: 'x4 domain', yref: 'y4 domain' },
+  ];
+  BP.plot(plotId, traces, layout, { editable: false });
+
+  const { trLimitA, elLimitA, percentile: p } = ATP_CONFIG.limitsTorque;
+  BP.yline(plotId,  trLimitA, { color: 'red', dash: 'dash', label: `±${trLimitA} A limit`, yref: 'y3', xref: 'x3 domain', editable: false });
+  BP.yline(plotId, -trLimitA, { color: 'red', dash: 'dash',                                yref: 'y3', xref: 'x3 domain', editable: false });
+  BP.yline(plotId,  elLimitA, { color: 'red', dash: 'dash', label: `±${elLimitA} A limit`, yref: 'y4', xref: 'x4 domain', editable: false });
+  BP.yline(plotId, -elLimitA, { color: 'red', dash: 'dash',                                yref: 'y4', xref: 'x4 domain', editable: false });
+
+  const tableRows = [];
+  limitsTorqueCheckValues().forEach(c => {
+    tableRows.push({ parameter: `${c.label} Tr P${p} |I| [A]`, value: c.n ? c.tr : 'no data', successCriteria: trLimitA, successMethod: 'smallerOrEqual' });
+    tableRows.push({ parameter: `${c.label} El P${p} |I| [A]`, value: c.n ? c.el : 'no data', successCriteria: elLimitA, successMethod: 'smallerOrEqual' });
+  });
+  BP.drawTableOneCol(tableId, tableRows);
+}
+
+/**
  * Route loaded CSV to the correct ATP results view by filename prefix.
  * Also marks the test as loaded in the View Telemetry panel if it is open.
  * @param {string} fileName
@@ -374,6 +491,9 @@ function handleAtpCsvLoaded(fileName) {
   } else if (base.startsWith('SineTest')) {
     finishSineTestResults(undefined, true);
     vtMarkTestLoaded('sine');
+  } else if (base.startsWith('LimitsTorque')) {
+    finishLimitsTorqueResults(true);
+    vtMarkTestLoaded('limits');
   } else if (typeof showTorqueTest === 'function') {
     showTorqueTest();
   }
@@ -618,12 +738,91 @@ async function runFrictionTest() {
   finishFrictionTestResults();
 }
 
+/**
+ * Run Limits Torque Test: visit the 4 corners, hold at each and record current, then return home.
+ * Recording pauses during the moves; the time axis is stitched so the corner segments are back-to-back.
+ */
+async function runLimitsTorqueTest() {
+  if (!serialPort) {
+    Swal.fire({ title: 'No Connection', text: 'Please connect to the device first', icon: 'error' });
+    return;
+  }
+
+  const motorToggleEl = document.getElementById('motor-toggle');
+  if (!motorToggleEl || !motorToggleEl.checked) {
+    Swal.fire({ title: 'Motor Off', text: 'Please turn the motor on before running Limits Torque', icon: 'warning' });
+    return;
+  }
+
+  const limitsBtn = document.getElementById('btn-atp-limits');
+  if (limitsBtn) {
+    limitsBtn.classList.add('in-progress');
+    limitsBtn.style.setProperty('--progress', '0%');
+  }
+
+  const cfg = ATP_CONFIG.limitsTorque;
+  await readMsg(`R1[13]=${ATP_CONFIG.testVelocity}; R1[23]=${ATP_CONFIG.testVelocity};`);
+
+  shouldRecordData = false;
+  rows = { time: [], Tr_angle: [], Tr_velocity: [], Tr_current: [], El_angle: [], El_velocity: [], El_current: [], Tr_cmd_angle: [], El_cmd_angle: [], Tr_pos_err: [], El_pos_err: [], status: [] };
+  const recordButton = document.getElementById('recordButton');
+  const timedOut = [];
+  const share = 100 / LIMITS_TORQUE_CORNERS.length;
+
+  for (let i = 0; i < LIMITS_TORQUE_CORNERS.length; i++) {
+    const { key, label } = LIMITS_TORQUE_CORNERS[i];
+    const { tr, el } = PREDEFINED_POSITIONS[key];
+
+    moveToPosition(key, tr, el);
+    const reached = await waitForPosition(tr, el, ARRIVAL_TOLERANCE_DEG, cfg.moveTimeoutMs);
+    if (!reached) {
+      console.warn(`Limits Torque: movement timeout at ${label}`);
+      timedOut.push(label);
+      if (limitsBtn) limitsBtn.style.setProperty('--progress', `${Math.round((i + 1) * share)}%`);
+      continue;
+    }
+    await new Promise(resolve => setTimeout(resolve, cfg.settleDelayMs));
+
+    // Resume the clock where the previous segment ended
+    const lastT = rows.time.length ? rows.time[rows.time.length - 1] + TELEMETRY_INTERVAL_MS : 0;
+    startTime = Date.now() - lastT;
+    shouldRecordData = true;
+    if (recordButton) recordButton.style.color = '#dc3545';
+
+    const recordStart = Date.now();
+    while (Date.now() - recordStart < cfg.recordMs) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const frac = Math.min(1, (Date.now() - recordStart) / cfg.recordMs);
+      if (limitsBtn) limitsBtn.style.setProperty('--progress', `${Math.round((i + frac) * share)}%`);
+    }
+
+    shouldRecordData = false;
+    if (recordButton) recordButton.style.color = '';
+  }
+
+  if (rows.time.length) {
+    applySignalProcessingToRows();
+    saveDataToCSV('LimitsTorque');
+  }
+
+  moveToPosition('home', PREDEFINED_POSITIONS.home.tr, PREDEFINED_POSITIONS.home.el);
+
+  if (limitsBtn) limitsBtn.style.setProperty('--progress', '100%');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  if (limitsBtn) {
+    limitsBtn.classList.remove('in-progress');
+    limitsBtn.style.removeProperty('--progress');
+  }
+
+  finishLimitsTorqueResults(false, timedOut);
+}
+
 // ==================== View Telemetry Helpers ====================
 
 /**
  * Mark a test type as loaded in the VT panel, save a snapshot of rows for PDF,
  * and check whether all 3 tests are now loaded.
- * @param {'ibit'|'sine'|'friction'} testType
+ * @param {'ibit'|'sine'|'friction'|'limits'} testType
  */
 function vtMarkTestLoaded(testType) {
   if (!document.getElementById('view-telemetry-panel')) return;
@@ -634,15 +833,15 @@ function vtMarkTestLoaded(testType) {
 
 /** Reset VT panel state — called when the View Telemetry panel opens. */
 function resetVtLoadedTests() {
-  vtLoadedTests = { ibit: false, sine: false, friction: false };
-  vtSavedRows   = { ibit: null,  sine: null,  friction: null };
+  vtLoadedTests = { ibit: false, sine: false, friction: false, limits: false };
+  vtSavedRows   = { ibit: null,  sine: null,  friction: null,  limits: null };
 }
 
 /** Show the Print to PDF button when at least one test file has been loaded. */
 function checkAllTestsLoaded() {
   const btn = document.getElementById('btn-print-pdf');
   if (!btn) return;
-  const anyLoaded = vtLoadedTests.ibit || vtLoadedTests.sine || vtLoadedTests.friction;
+  const anyLoaded = vtLoadedTests.ibit || vtLoadedTests.sine || vtLoadedTests.friction || vtLoadedTests.limits;
   btn.style.display = anyLoaded ? '' : 'none';
 }
 
@@ -673,6 +872,15 @@ function vtShowFrictionResults() {
   rows = prev;
 }
 
+/** Re-show Limits Torque results from the saved VT snapshot. */
+function vtShowLimitsTorqueResults() {
+  if (!vtSavedRows.limits) return;
+  const prev = rows;
+  rows = vtSavedRows.limits;
+  finishLimitsTorqueResults();
+  rows = prev;
+}
+
 /**
  * Ask for gimbal number and remarks, then:
  *  1. Render each test off-screen one at a time.
@@ -684,7 +892,7 @@ function vtShowFrictionResults() {
  * the browser a clean, standalone page to print.
  */
 async function printAtpReport() {
-  if (!vtSavedRows.ibit && !vtSavedRows.sine && !vtSavedRows.friction) return;
+  if (!vtSavedRows.ibit && !vtSavedRows.sine && !vtSavedRows.friction && !vtSavedRows.limits) return;
 
   // Read metadata from the panel fields
   const gimbalRaw = document.getElementById('vt-gimbal-no')?.value.trim() || '';
@@ -765,10 +973,15 @@ async function printAtpReport() {
       frictionOk = frictionTestPassed(trFr, elFr);
     } catch (e) { frictionOk = false; }
   }
+  let limitsOk = null;
+  if (vtSavedRows.limits) {
+    rows = vtSavedRows.limits;
+    limitsOk = limitsTorqueTestPassed();
+  }
   rows = prevRowsForSummary;
-  const loadedCount = [ibitOk, sineOk, frictionOk].filter(v => v !== null).length;
-  const allLoaded   = loadedCount === 3;
-  const allOk       = allLoaded && ibitOk && sineOk && frictionOk;
+  const loadedCount = [ibitOk, sineOk, frictionOk, limitsOk].filter(v => v !== null).length;
+  const allLoaded   = loadedCount === 4;
+  const allOk       = allLoaded && ibitOk && sineOk && frictionOk && limitsOk;
 
   // Off-screen container: fixed position so Plotly gets real pixel dimensions.
   const tempContainer = document.createElement('div');
@@ -799,6 +1012,12 @@ async function printAtpReport() {
         const elFr = computeFrictionAnalysis(rows.El_angle, rows.El_current);
         showFrictionTestResults(trFr, elFr, pId, tId);
       },
+    },
+    {
+      key: 'limits',
+      label: 'Limits Torque \u2014 Holding Current at Movement Limits',
+      description: `The Limits Torque test verifies the motor current needed to hold the gimbal at the corners of its movement range. The gimbal moves at ${ATP_CONFIG.testVelocity}\u00a0deg/s to each corner in turn \u2014 top-right, top-left, bottom-left and bottom-right (TR \u00b1${PREDEFINED_POSITIONS.topRight.tr}\u00b0, EL ${PREDEFINED_POSITIONS.topRight.el}\u00b0 / ${PREDEFINED_POSITIONS.bottomRight.el}\u00b0) \u2014 and holds there. Motor current is recorded for ${ATP_CONFIG.limitsTorque.recordMs / 1000}\u00a0s, starting ${ATP_CONFIG.limitsTorque.settleDelayMs / 1000}\u00a0s after arrival; recording is paused during the moves. A corner not reached within ${ATP_CONFIG.limitsTorque.moveTimeoutMs / 1000}\u00a0s fails. The test passes when, at every corner, the ${ATP_CONFIG.limitsTorque.percentile}th percentile of |current| does not exceed ${ATP_CONFIG.limitsTorque.trLimitA}\u00a0A on traverse and ${ATP_CONFIG.limitsTorque.elLimitA}\u00a0A on elevation.`,
+      render(pId, tId) { rows = vtSavedRows.limits; showLimitsTorqueResults(pId, tId); },
     },
   ].filter(def => vtSavedRows[def.key] !== null);
 
@@ -889,6 +1108,7 @@ async function printAtpReport() {
     { name: 'IBIT',          ok: ibitOk },
     { name: 'Sine Test',     ok: sineOk },
     { name: 'Friction Test', ok: frictionOk },
+    { name: 'Limits Torque', ok: limitsOk },
   ].filter(({ ok }) => ok !== null)
    .map(({ name, ok }) => `
     <tr>
@@ -1035,7 +1255,7 @@ async function printAtpReport() {
           <tbody>${summaryRows}</tbody>
         </table>
         <div class="overall-result ${allLoaded ? (allOk ? 'pass' : 'fail') : 'partial'}">
-          Overall: ${allLoaded ? (allOk ? 'ALL TESTS PASSED \u2713' : 'ONE OR MORE TESTS FAILED \u2717') : `Partial Report \u2014 ${loadedCount} of 3 tests loaded`}
+          Overall: ${allLoaded ? (allOk ? 'ALL TESTS PASSED \u2713' : 'ONE OR MORE TESTS FAILED \u2717') : `Partial Report \u2014 ${loadedCount} of 4 tests loaded`}
         </div>
       </div>
     </td></tr>
@@ -1077,6 +1297,10 @@ window.handleAtpCsvLoaded        = handleAtpCsvLoaded;
 window.runIBIT                   = runIBIT;
 window.runSineTest               = runSineTest;
 window.runFrictionTest           = runFrictionTest;
+window.showLimitsTorqueResults   = showLimitsTorqueResults;
+window.finishLimitsTorqueResults = finishLimitsTorqueResults;
+window.runLimitsTorqueTest       = runLimitsTorqueTest;
+window.vtShowLimitsTorqueResults = vtShowLimitsTorqueResults;
 window.vtMarkTestLoaded          = vtMarkTestLoaded;
 window.resetVtLoadedTests        = resetVtLoadedTests;
 window.checkAllTestsLoaded       = checkAllTestsLoaded;

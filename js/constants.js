@@ -95,6 +95,15 @@ const ATP_CONFIG = {
     velocity: 10,               // deg/s for the slow sweep
     limitA: 1,                  // max mean current deviation on each branch
   },
+
+  limitsTorque: {
+    moveTimeoutMs: 15000,       // max time to reach each corner; a timed-out corner fails
+    settleDelayMs: 200,         // wait after arrival before recording
+    recordMs: 15000,            // recording time at each corner
+    percentile: 95,             // P95 of |current| is compared to the limits
+    trLimitA: 0.7,              // pass when P95 |Tr current| <= this, at every corner
+    elLimitA: 1.7,              // pass when P95 |El current| <= this, at every corner
+  },
 };
 
 // System mode names for R1[10], shown in #systemModeInput
